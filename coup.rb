@@ -17,9 +17,14 @@ optparse = OptionParser.new do |opts|
 
   options[:project] = nil
   options[:verbose] = false
+  options[:command] = 'cabal'
 
   opts.on( '-v', '--verbose', 'Output more information' ) do
     options[:verbose] = true
+  end
+
+  opts.on( '-c', '--command CMD', 'What command to run on the remaining arguments (default is cabal)' ) do |x|
+    options[:command] = c
   end
 
   opts.on( '-p', '--project NAME', 'Select the coup cabal project (name or path)' ) do |p|
@@ -32,7 +37,7 @@ optparse = OptionParser.new do |opts|
   end
 end
 
-optparse.parse!
+args = optparse.order(ARGV)
 
 # config file
 #  - support global config file and project config file
@@ -225,7 +230,9 @@ end
 ENV['GHC_PACKAGE_PATH'] = cabal_env['package-db'] + ':' + ENV['GHC_GLOBAL_PACKAGE_PATH']
 ENV['CABAL_CONFIG'] = cabal_config
 
-system "cabal", "list"
-system "ghc-pkg", "list"
+# TODO add 'install-deps' command
+if not args.empty?
+  system options[:command], *args
+end
 
 ########################################
