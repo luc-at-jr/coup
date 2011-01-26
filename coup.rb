@@ -4,20 +4,42 @@ require 'digest/md5'
 require 'erb'
 # require 'curb'
 require 'fileutils'
+require 'optparse'
 
 ################################################################################
 coup_user_dir = File.join(Dir.home, ".coup")
 cache_dir     = File.join(coup_user_dir, 'cache')
 
+options = {}
+
+optparse = OptionParser.new do |opts|
+  opts.banner = "Usage: coup.rb [options] [command]"
+
+  options[:project] = nil
+  options[:verbose] = false
+
+  opts.on( '-v', '--verbose', 'Output more information' ) do
+    options[:verbose] = true
+  end
+
+  opts.on( '-p', '--project NAME', 'Select the coup cabal project (name or path)' ) do |p|
+    options[:project] = p
+  end
+
+  opts.on( '-h', '--help', 'Display this screen' ) do
+    puts opts
+    exit
+  end
+end
+
+optparse.parse!
+
 # config file
 #  - support global config file and project config file
-#  - hackage repositories
 #  - list of project dirs (so we can run them without cd-ing into them)
-#  - use yaml?
+#  - use yaml for config files?
 
-# generate .hackage file
-#  - cabal install --dry-run
-#  - need to handle the janrain-* packages that aren't on hackage
+# generate .hackage file with cabal install --dry-run
 
 # ways of specifying a project:
 #  - default to .cabal file in current directory
@@ -88,9 +110,8 @@ def get_ghc_version()
 end
 
 ################################################################################
-# TODO search recursively for .hackage files.
-
-packages, digest = read_package_list(ARGV[0])
+# TODO when :project is nil, search current directory recursively for .hackage files.
+packages, digest = read_package_list(options[:project])
 
 ghc_version   = get_ghc_version()
 project_dir   = File.join(coup_user_dir, digest + '-' + ghc_version)
