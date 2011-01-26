@@ -39,14 +39,27 @@ def parse_package_name_version(str)
   return name, version
 end
 
+def old_hackage?(url)
+  return (url.index("hackage.haskell.org") and true)
+end
+
 def read_package_list(path)
-  # TODO check if file exists, return null?
-  packages = []
+  # TODO check if file exists, return nil?
+  current_repo = "http://hackage.haskell.org/packages/archive"
+  packages = {}
 
   x = File.read(path)
   x.lines do |line|
-    # TODO validate the package name?
-    packages << line.chomp
+    line = line.chomp
+    if line[0] == '[' and line[-1] = ']'
+      current_repo = line[1..-2]
+    elsif not line.empty? and line[0] != '#'
+      # TODO validate the package name?
+      if not packages[current_repo]
+        packages[current_repo] = []
+      end
+      packages[current_repo] << line
+    end
   end
 
   return packages, Digest::MD5.hexdigest(x)
@@ -75,6 +88,7 @@ def get_ghc_version()
 end
 
 ################################################################################
+# TODO search recursively for .hackage files.
 
 packages, digest = read_package_list(ARGV[0])
 
@@ -146,36 +160,43 @@ if not File.exists?(index_path)
   system "tar", "cf", "00-index.tar", "dummy"
 end
 
-hackage_url = "http://hackage.haskell.org/packages/archive"
-packages.each do |name_version|
-  name, version = parse_package_name_version name_version
+packages.each do |hackage_url, list|
+  list.each do |name_version|
+    name, version = parse_package_name_version name_version
 
-  tar_file    = name_version + '.tar.gz'
-  tar_path    = File.join(cache_dir, name, version, tar_file)
-  cabal_file  = name + ".cabal"
-  cabal_path  = File.join(cabal_env['local-repo'], name, version, cabal_file)
+    tar_file    = name_version + '.tar.gz'
+    tar_path    = File.join(cache_dir, name, version, tar_file)
+    cabal_file  = name + ".cabal"
+    cabal_path  = File.join(cabal_env['local-repo'], name, version, cabal_file)
 
-  if not File.exists?(tar_path)
-    dir = File.dirname(tar_path)
-    FileUtils.mkdir_p(dir)
-    Dir.chdir(dir)
-    system "wget", hackage_url + '/' + name + '/' + version + '/' + tar_file
-  end
+    if not File.exists?(tar_path)
+      dir = File.dirname(tar_path)
+      FileUtils.mkdir_p(dir)
+      Dir.chdir(dir)
+      if old_hackage? hackage_url
+        url = hackage_url + '/' + name + '/' + version + '/' + tar_file
+      else
+        url = hackage_url + '/' + tar_file
+      end
+      system "wget", url
+    end
 
-  if not File.exists?(cabal_path)
-    FileUtils.mkdir_p(File.dirname(cabal_path))
+    if not File.exists?(cabal_path)
+      FileUtils.mkdir_p(File.dirname(cabal_path))
 
-    # get the .cabal file from the tarball
-    fin = IO.popen(["tar xOf ", tar_path, ' ', name_version, '/', cabal_file].join)
-    x = fin.read
-    fin.close
+      # get the .cabal file from the tarball
+      fin = IO.popen(["tar xOf ", tar_path, ' ', name_version, '/', cabal_file].join)
+      x = fin.read
+      fin.close
 
-    f = File.new(cabal_path, "w")
-    f.write(x)
-    f.close
+      f = File.new(cabal_path, "w")
+      f.write(x)
+      f.close
 
-    system "tar", "uf", index_file, File.join(".", name, version, cabal_file)
-    File.symlink(tar_path, File.join(name, version, tar_file))
+      Dir.chdir(cabal_env['local-repo'])
+      system "tar", "uf", index_file, File.join(".", name, version, cabal_file)
+      File.symlink(tar_path, File.join(name, version, tar_file))
+    end
   end
 end
 
