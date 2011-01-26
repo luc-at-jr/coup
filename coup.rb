@@ -114,6 +114,15 @@ def get_ghc_version()
   return ghc_version
 end
 
+def get_ghc_global_package_path()
+  ghc_pkg = ENV['GHC_PKG'] or 'ghc-pkg'
+  fin = IO.popen("strings `which #{ghc_pkg}` | grep 'topdir=' | cut -d\"\\\"\" -f2")
+  p = File.join(fin.read.chomp, "package.conf.d")
+  fin.close
+  # TODO check that p exists
+  return p
+end
+
 ################################################################################
 # TODO when :project is nil, search current directory recursively for .hackage files.
 packages, digest = read_package_list(options[:project])
@@ -128,15 +137,11 @@ FileUtils.mkdir_p(cache_dir)
 # generate cabal.config if it doesn't exist
 # TODO let user specify values for the many cabal config options.
 cabal_env = {}
-# cabal_env['remote-repo']          = "dummy:http://DUMMY_REMOTE_REPO_TO_SHUT_UP_CABAL_WARNINGS"
-# cabal_env['remote-repo-cache']    = File.join(coup_user_dir, 'cache')
 cabal_env['local-repo']           = File.join(project_dir, 'packages')
 cabal_env['with-compiler']        = 'ghc-' + ghc_version
-cabal_env['package-db']           = File.join(project_dir, 'packages-' + ghc_version + '.conf')
+cabal_env['package-db']           = File.join(project_dir, "packages-#{ghc_version}.conf")
 cabal_env['build-summary']        = File.join(project_dir, "logs", "build.log")
 cabal_env['executable-stripping'] = "True"
-
-# FileUtils.mkdir_p(cabal_env['remote-repo-cache'])
 
 cabal_config = File.join(project_dir, "cabal.config")
 if not File.exist?(cabal_config)
@@ -144,7 +149,7 @@ if not File.exist?(cabal_config)
   cabal_env.each do |key, val|
     f.write(key + ': ' + val + "\n")
   end
-  prefix = File.join(project_dir, 'ghc-' + ghc_version)
+  prefix = File.join(project_dir, "ghc-#{ghc_version}")
   template = ERB.new <<-EOF
 install-dirs user
   prefix: <%= prefix %>
@@ -167,13 +172,10 @@ end
 # generate ghc-pkg db if it doesn't exist
 
 if not Dir.exists?(cabal_env['package-db'])
-  system "ghc-pkg-" + ghc_version, "init", cabal_env['package-db']
+  system "ghc-pkg-#{ghc_version}", "init", cabal_env['package-db']
 end
 
 ########################################
-
-# TODO figure out the global package database;
-# for now, get it from GHC_GLOBAL_PACKAGE_PATH
 
 FileUtils.mkdir_p(cabal_env['local-repo'])
 
@@ -200,9 +202,9 @@ packages.each do |hackage_url, list|
       FileUtils.mkdir_p(dir)
       Dir.chdir(dir)
       if old_hackage? hackage_url
-        url = hackage_url + '/' + name + '/' + version + '/' + tar_file
+        url = "#{hackage_url}/#{name}/#{version}/#{tar_file}"
       else
-        url = hackage_url + '/' + tar_file
+        url = "#{hackage_url}/#{tar_file}"
       end
       system "wget", url
     end
@@ -211,7 +213,7 @@ packages.each do |hackage_url, list|
       FileUtils.mkdir_p(File.dirname(cabal_path))
 
       # get the .cabal file from the tarball
-      fin = IO.popen(["tar xOf ", tar_path, ' ', name_version, '/', cabal_file].join)
+      fin = IO.popen("tar xOf #{tar_path} #{name_version}/#{cabal_file}")
       x = fin.read
       fin.close
 
@@ -227,7 +229,7 @@ packages.each do |hackage_url, list|
 end
 
 ########################################
-ENV['GHC_PACKAGE_PATH'] = cabal_env['package-db'] + ':' + ENV['GHC_GLOBAL_PACKAGE_PATH']
+ENV['GHC_PACKAGE_PATH'] = cabal_env['package-db'] + ':' + get_ghc_global_package_path()
 ENV['CABAL_CONFIG'] = cabal_config
 
 # TODO add 'install-deps' command
