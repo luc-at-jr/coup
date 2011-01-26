@@ -5,6 +5,10 @@ require 'erb'
 # require 'curb'
 require 'fileutils'
 
+################################################################################
+coup_user_dir = File.join(Dir.home, ".coup")
+cache_dir     = File.join(coup_user_dir, 'cache')
+
 # config file
 #  - support global config file and project config file
 #  - hackage repositories
@@ -42,7 +46,7 @@ def read_package_list(path)
   x = File.read(path)
   x.lines do |line|
     # TODO validate the package name?
-    packages << line.chomp("\n")
+    packages << line.chomp
   end
 
   return packages, Digest::MD5.hexdigest(x)
@@ -62,7 +66,10 @@ end
 def get_ghc_version()
   ghc_version = ENV['GHC_VERSION']
   if not ghc_version
-    ghc_version = '6.12.3' # TODO
+    ghc = ENV['GHC'] or 'ghc'
+    fin = IO.popen([ghc, "--version"].join(' '))
+    ghc_version = fin.read.chomp.split(' ')[-1]
+    fin.close
   end
   return ghc_version
 end
@@ -71,8 +78,6 @@ end
 
 packages, digest = read_package_list(ARGV[0])
 
-coup_user_dir = File.join(Dir.home, ".coup")
-cache_dir     = File.join(coup_user_dir, 'cache')
 ghc_version   = get_ghc_version()
 project_dir   = File.join(coup_user_dir, digest + '-' + ghc_version)
 
@@ -163,6 +168,7 @@ packages.each do |name_version|
     # get the .cabal file from the tarball
     fin = IO.popen(["tar xOf ", tar_path, ' ', name_version, '/', cabal_file].join)
     x = fin.read
+    fin.close
 
     f = File.new(cabal_path, "w")
     f.write(x)
