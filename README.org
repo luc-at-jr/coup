@@ -1,0 +1,58 @@
+* About
+
+coup is a simple program for managing library dependencies in Haskell cabal
+projects and building your cabal packages.  It lets you specify an exact list of
+Haskell library versions that the project is allowed to use, and maintains a
+local ghc database and cabal settings for that list.
+
+Some features:
+- coup can generate the list of packages from a .cabal file.
+- separate ghc database and settings for each project.
+  - the name of the local ghc/cabal database and settings is based on a hash of
+    the list of packages, so two projects can share the same ghc database simply
+    by having an identical list.
+- shared package cache between all projects, to avoid downloading duplicate
+  tarballs.
+
+coup does not make it easy to use any libraries that it builds.  Its main use
+case is to install library dependencies and build binaries in place.
+
+* Commands
+
+** init
+Create the hackage list from a .cabal file.  Will not overwrite unless the
+--force option is specified.
+
+** configure
+Run cabal configure.
+
+** install-deps
+Install all dependencies (all files listed in the .hackage file).
+
+** build
+Build this package in place.  Optional --deps option means run install-deps first.
+
+** install
+Build and install this package. Optional --deps option means run install-deps first.
+
+* TODOs
+- Um, get started?
+- Define gem package
+
+* (Settings)                                                       :noexport:
+#+TITLE:
+#+AUTHOR:
+#+EMAIL:
+#+DATE:
+#+DESCRIPTION:
+#+KEYWORDS:
+#+LANGUAGE:  en
+#+OPTIONS:   H:3 num:nil toc:nil \n:nil @:t ::t |:t ^:{} -:t f:t *:t <:t
+#+OPTIONS:   TeX:t LaTeX:nil skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+OPTIONS:   author:nil email:nil timestamp:nil creator:nil
+#+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
+#+EXPORT_SELECT_TAGS: export
+#+EXPORT_EXCLUDE_TAGS: noexport
+#+LINK_UP:
+#+LINK_HOME:
+#+XSLT:
