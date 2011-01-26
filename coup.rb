@@ -9,6 +9,7 @@ require 'optparse'
 ################################################################################
 coup_user_dir = File.join(Dir.home, ".coup")
 cache_dir     = File.join(coup_user_dir, 'cache')
+workdir       = Dir.getwd
 
 options = {}
 
@@ -17,14 +18,13 @@ optparse = OptionParser.new do |opts|
 
   options[:project] = nil
   options[:verbose] = false
-  options[:command] = 'cabal'
 
   opts.on( '-v', '--verbose', 'Output more information' ) do
     options[:verbose] = true
   end
 
-  opts.on( '-c', '--command CMD', 'What command to run on the remaining arguments (default is cabal)' ) do |x|
-    options[:command] = c
+  opts.on( '-c', '--command CMD', "Run command on remaining arguments" ) do |x|
+    options[:command] = x
   end
 
   opts.on( '-p', '--project NAME', 'Select the coup cabal project (name or path)' ) do |p|
@@ -75,8 +75,7 @@ def read_package_list(path)
   current_repo = "http://hackage.haskell.org/packages/archive"
   packages = {}
 
-  x = File.read(path)
-  x.lines do |line|
+  File.new(path).each_line do |line|
     line = line.chomp
     if line[0] == '[' and line[-1] = ']'
       current_repo = line[1..-2]
@@ -89,18 +88,7 @@ def read_package_list(path)
     end
   end
 
-  return packages, Digest::MD5.hexdigest(x)
-end
-
-def find_cabal_file(dir)
-  files = Dir.entries(dir)
-  cabal_files = files.find_all {|x| File.extname(x) == ".cabal" }
-
-  return case cabal_files.length
-         when 0 then throw "No cabal file found"
-         when 1 then ['.', cabal_files[0].chomp(".cabal")]
-         else throw "Multiple cabal files found"
-         end
+  return packages
 end
 
 def get_ghc_version()
@@ -123,12 +111,45 @@ def get_ghc_global_package_path()
   return p
 end
 
+def find_project_file(dir)
+  files = Dir.entries(dir)
+  project_files = files.find_all {|x| File.extname(x) == ".hackage" }
+
+  return case project_files.length
+         when 0 then
+           if dir == '/'
+             return nil
+           else
+             find_project_file(File.dirname(dir))
+           end
+         when 1 then File.join(dir, project_files[0])
+         else throw "Multiple project files found in #{dir.path}"
+         end
+end
+
 ################################################################################
-# TODO when :project is nil, search current directory recursively for .hackage files.
-packages, digest = read_package_list(options[:project])
+
+if options[:project].nil?
+  options[:project] = find_project_file(workdir)
+end
+
+if options[:project].nil?
+  throw "No project file found, please specify one with -p"
+end
+
+# TODO warn if more than one version of same package
+packages = read_package_list(options[:project])
+
+package_list = []
+packages.each do |hackage_url, list|
+  package_list = package_list + list
+end
+package_list.sort!
+
+digest = Digest::MD5.hexdigest(package_list.join)
 
 ghc_version   = get_ghc_version()
-project_dir   = File.join(coup_user_dir, digest + '-' + ghc_version)
+project_dir   = File.join(coup_user_dir, "#{digest}-#{ghc_version}")
 
 FileUtils.mkdir_p(project_dir)
 FileUtils.mkdir_p(cache_dir)
@@ -232,9 +253,13 @@ end
 ENV['GHC_PACKAGE_PATH'] = cabal_env['package-db'] + ':' + get_ghc_global_package_path()
 ENV['CABAL_CONFIG'] = cabal_config
 
-# TODO add 'install-deps' command
+Dir.chdir(workdir)
 if not args.empty?
-  system options[:command], *args
+  case args[0]
+  when 'install-all' then
+    system 'cabal', 'install', *package_list
+  else system (options[:command] or 'cabal'), *args
+  end
 end
 
 ########################################
