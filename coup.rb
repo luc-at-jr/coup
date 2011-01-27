@@ -77,7 +77,7 @@ def read_package_list(path)
 
   File.new(path).each_line do |line|
     line = line.chomp
-    if not line.empty? and line[0] != '#'
+    if not line.empty? and line[0].chr != '#'
       if line[0].chr == '[' and line[-1].chr == ']'
         current_repo = line[1..-2]
       else
