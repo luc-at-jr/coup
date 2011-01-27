@@ -7,7 +7,7 @@ require 'fileutils'
 require 'optparse'
 
 ################################################################################
-coup_user_dir = File.join(Dir.home, ".coup")
+coup_user_dir = File.join(ENV['HOME'], ".coup")
 cache_dir     = File.join(coup_user_dir, 'cache')
 workdir       = Dir.getwd
 
@@ -57,7 +57,7 @@ args = optparse.order(ARGV)
 def parse_package_name_version(str)
   x = str.split('-')
   if (x.length < 2)
-    throw "malformed package name"
+    throw "malformed package name: " + str
   end
 
   name = x[0..-2].join('-')
@@ -77,14 +77,16 @@ def read_package_list(path)
 
   File.new(path).each_line do |line|
     line = line.chomp
-    if line[0] == '[' and line[-1] = ']'
-      current_repo = line[1..-2]
-    elsif not line.empty? and line[0] != '#'
-      # TODO validate the package name?
-      if not packages[current_repo]
-        packages[current_repo] = []
+    if not line.empty? and line[0] != '#'
+      if line[0].chr == '[' and line[-1].chr == ']'
+        current_repo = line[1..-2]
+      else
+        # TODO validate the package name?
+        if not packages[current_repo]
+          packages[current_repo] = []
+        end
+        packages[current_repo] << line
       end
-      packages[current_repo] << line
     end
   end
 
@@ -94,7 +96,7 @@ end
 def get_ghc_version()
   ghc_version = ENV['GHC_VERSION']
   if not ghc_version
-    ghc = ENV['GHC'] or 'ghc'
+    ghc = ENV['GHC'] || 'ghc'
     fin = IO.popen([ghc, "--version"].join(' '))
     ghc_version = fin.read.chomp.split(' ')[-1]
     fin.close
@@ -103,7 +105,7 @@ def get_ghc_version()
 end
 
 def get_ghc_global_package_path()
-  ghc_pkg = ENV['GHC_PKG'] or 'ghc-pkg'
+  ghc_pkg = ENV['GHC_PKG'] || 'ghc-pkg'
   fin = IO.popen("strings `which #{ghc_pkg}` | grep 'topdir=' | cut -d\"\\\"\" -f2")
   p = File.join(fin.read.chomp, "package.conf.d")
   fin.close
@@ -192,7 +194,7 @@ end
 ########################################
 # generate ghc-pkg db if it doesn't exist
 
-if not Dir.exists?(cabal_env['package-db'])
+if not File.exists?(cabal_env['package-db'])
   system "ghc-pkg-#{ghc_version}", "init", cabal_env['package-db']
 end
 
@@ -258,7 +260,9 @@ if not args.empty?
   case args[0]
   when 'install-all' then
     system 'cabal', 'install', *package_list
-  else system (options[:command] or 'cabal'), *args
+  else
+    cmd = options[:command] || 'cabal'
+    system cmd, *args
   end
 end
 
