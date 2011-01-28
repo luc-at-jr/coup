@@ -39,25 +39,20 @@ end
 
 args = optparse.order(ARGV)
 
-# config file
-#  - support global config file and project config file
-#  - list of project dirs (so we can run them without cd-ing into them)
-#  - use yaml for config files?
-
-# generate .hackage file with cabal install --dry-run
-
-# ways of specifying a project:
-#  - default to .cabal file in current directory
-#  - path to .cabal file (.cabal extension is optional)
-#  - name of a project from config file, which tells the dir where located
-
 ################################################################################
 # utilities
+
+def require_command(name)
+  `which #{name}`
+  if not $?.success?
+    raise "Cannot find #{name}"
+  end
+end
 
 def parse_package_name_version(str)
   x = str.split('-')
   if (x.length < 2)
-    throw "malformed package name: " + str
+    raise "malformed package name: " + str
   end
 
   name = x[0..-2].join('-')
@@ -97,20 +92,29 @@ def get_ghc_version()
   ghc_version = ENV['GHC_VERSION']
   if not ghc_version
     ghc = ENV['GHC'] || 'ghc'
+    require_command(ghc)
     fin = IO.popen([ghc, "--version"].join(' '))
     ghc_version = fin.read.chomp.split(' ')[-1]
     fin.close
   end
-  return ghc_version
+  if ghc_version and ghc_version.split('.').length == 3
+    return ghc_version
+  else
+    raise "Could not determine ghc version"
+  end
 end
 
 def get_ghc_global_package_path()
   ghc_pkg = ENV['GHC_PKG'] || 'ghc-pkg'
+  require_command(ghc_pkg)
   fin = IO.popen("strings `which #{ghc_pkg}` | grep 'topdir=' | cut -d\"\\\"\" -f2")
   p = File.join(fin.read.chomp, "package.conf.d")
   fin.close
-  # TODO check that p exists
-  return p
+  if File.exists?(p)
+    return p
+  else
+    raise "GHC package database (#{p}) does not exist"
+  end
 end
 
 def find_project_file(dir)
@@ -125,7 +129,7 @@ def find_project_file(dir)
              find_project_file(File.dirname(dir))
            end
          when 1 then File.join(dir, project_files[0])
-         else throw "Multiple project files found in #{dir.path}"
+         else raise "Multiple project files found in #{dir.path}"
          end
 end
 
@@ -136,7 +140,7 @@ if options[:project].nil?
 end
 
 if options[:project].nil?
-  throw "No project file found, please specify one with -p"
+  raise "No project file found, please specify one with -p"
 end
 
 # TODO warn if more than one version of same package
@@ -195,7 +199,7 @@ end
 # generate ghc-pkg db if it doesn't exist
 
 if not File.exists?(cabal_env['package-db'])
-  system "ghc-pkg-#{ghc_version}", "init", cabal_env['package-db']
+  unless system "ghc-pkg-#{ghc_version}", "init", cabal_env['package-db'] then exit 1 end
 end
 
 ########################################
@@ -208,7 +212,7 @@ index_path = File.join(cabal_env['local-repo'], index_file)
 if not File.exists?(index_path)
   Dir.chdir(cabal_env['local-repo'])
   FileUtils.touch("dummy")
-  system "tar", "cf", "00-index.tar", "dummy"
+  unless system "tar", "cf", "00-index.tar", "dummy" then exit 1 end
 end
 
 packages.each do |hackage_url, list|
@@ -229,7 +233,7 @@ packages.each do |hackage_url, list|
       else
         url = "#{hackage_url}/#{tar_file}"
       end
-      system "wget", url
+      unless system "wget", url then exit 1 end
     end
 
     if not File.exists?(cabal_path)
@@ -245,7 +249,7 @@ packages.each do |hackage_url, list|
       f.close
 
       Dir.chdir(cabal_env['local-repo'])
-      system "tar", "uf", index_file, File.join(".", name, version, cabal_file)
+      unless system "tar", "uf", index_file, File.join(".", name, version, cabal_file) then exit 1 end
       File.symlink(tar_path, File.join(name, version, tar_file))
     end
   end
@@ -256,14 +260,12 @@ ENV['GHC_PACKAGE_PATH'] = cabal_env['package-db'] + ':' + get_ghc_global_package
 ENV['CABAL_CONFIG'] = cabal_config
 
 Dir.chdir(workdir)
-if not args.empty?
-  case args[0]
-  when 'install-all' then
-    system 'cabal', 'install', *package_list
-  else
-    cmd = options[:command] || 'cabal'
-    system cmd, *args
-  end
+case args[0]
+when 'install-all' then
+  unless system 'cabal', 'install', *package_list then exit 1 end
+else
+  cmd = options[:command] || 'cabal'
+  unless system cmd, *args then exit 1 end
 end
 
 ########################################
