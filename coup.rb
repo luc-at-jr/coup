@@ -93,8 +93,8 @@ def get_ghc_version()
   if not ghc_version
     ghc = ENV['GHC'] || 'ghc'
     require_command(ghc)
-    fin = IO.popen([ghc, "--version"].join(' '))
-    ghc_version = fin.read.chomp.split(' ')[-1]
+    fin = IO.popen([ghc, "--numeric-version"].join(' '))
+    ghc_version = fin.read.chomp
     fin.close
   end
   if ghc_version and ghc_version.split('.').length == 3
