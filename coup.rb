@@ -45,15 +45,17 @@ args = optparse.order(ARGV)
 
 ################################################################################
 
-if options[:project].nil?
-  options[:project] = find_project_file(workdir)
-end
+project_file = options[:project] || find_project_file(workdir)
 
-if options[:project].nil?
+if project_file.nil?
   raise "No project file found, please specify one with -p"
+elsif not File.exist?(project_file)
+  raise "Project file does not exist: #{project_file}"
 end
 
-packages = read_package_list(options[:project])
+packages = read_package_list(project_file)
+
+project_name = project_file.chomp(File.extname(project_file))
 
 # packages is a dictionary of package lists, indexed by repo name.
 # package_list is a flattened list of all packages.
@@ -69,7 +71,7 @@ package_list.sort!
 digest = Digest::MD5.hexdigest(package_list.join)
 
 ghc_version   = get_ghc_version()
-project_dir   = File.join(coup_user_dir, "#{digest}-#{ghc_version}")
+project_dir   = File.join(coup_user_dir, "projects", "#{project_name}-#{digest}-#{ghc_version}")
 repo_dir      = File.join(project_dir, 'packages')
 
 FileUtils.mkdir_p(project_dir)
