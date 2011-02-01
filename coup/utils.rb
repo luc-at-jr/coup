@@ -100,11 +100,13 @@ end
 
 ################################################################################
 def gen_cabal_config(workdir, repo_dir, ghc_version)
+  package_db_path = File.join(workdir, "packages-#{ghc_version}.conf.d")
+
   # TODO let user specify values for the many cabal config options.
   cabal_env = {}
   cabal_env['local-repo']           = repo_dir
   cabal_env['with-compiler']        = 'ghc-' + ghc_version
-  cabal_env['package-db']           = File.join(workdir, "packages-#{ghc_version}.conf.d")
+  cabal_env['package-db']           = package_db_path
   # cabal_env['build-summary']        = File.join(dir, "logs", "build.log")
   # cabal_env['executable-stripping'] = "True"
 
@@ -136,7 +138,7 @@ EOF
   f.write(template.result(binding))
   f.close
 
-  return cabal_config, cabal_env['package-db']
+  return cabal_config, package_db_path
 end
 
 ################################################################################
@@ -196,3 +198,5 @@ def sync_local_repo(repo_dir, cache_dir, packages)
     end
   end
 end
+
+################################################################################
