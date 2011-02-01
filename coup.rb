@@ -54,9 +54,10 @@ case args[0]
 when 'install-all' then
   install_packages(coup_user_dir, project_dir, ghc_version, all_packages, false, args[1..-1])
 when 'install', 'install-deps' then
+  deps_only = args[0] == 'install-deps'
   args.shift
   flags, pkgs = args.partition {|x| x[0] == '-'}
-  install_packages(coup_user_dir, project_dir, ghc_version, pkgs, args[0] == 'install-deps', flags)
+  install_packages(coup_user_dir, project_dir, ghc_version, pkgs, deps_only, flags)
 when 'cabal', 'list', 'configure', 'build'
   db_args = get_project_installed_packages(project_dir).map {|x| "--package-db=#{x}"}
   if args[0] == 'cabal' then args.shift end
