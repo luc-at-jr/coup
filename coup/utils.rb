@@ -99,49 +99,6 @@ def find_project_file(dir)
 end
 
 ################################################################################
-def gen_cabal_config(workdir, repo_dir, ghc_version)
-  package_db_path = File.join(workdir, "packages-#{ghc_version}.conf.d")
-
-  # TODO let user specify values for the many cabal config options.
-  cabal_env = {}
-  cabal_env['local-repo']           = repo_dir
-  cabal_env['with-compiler']        = 'ghc-' + ghc_version
-  cabal_env['package-db']           = package_db_path
-  # cabal_env['build-summary']        = File.join(dir, "logs", "build.log")
-  # cabal_env['executable-stripping'] = "True"
-
-  cabal_config = File.join(workdir, "cabal.config")
-  if File.exist?(cabal_config)
-    File.delete(cabal_config)
-  end
-
-  f = File.new(cabal_config, "w")
-  cabal_env.each do |key, val|
-    f.write(key + ': ' + val + "\n")
-  end
-  prefix = File.join(workdir, "ghc-#{ghc_version}")
-  template = ERB.new <<-EOF
-
-install-dirs user
-  prefix: <%= prefix %>
-  -- bindir: $prefix/bin
-  libdir: $prefix
-  libsubdir: $pkgid/lib
-  libexecdir: $prefix/$pkgid/libexec
-  datadir: $prefix
-  datasubdir: $pkgid/share
-  docdir: $datadir/$pkgid/doc
-  -- htmldir: $docdir/html
-  -- haddockdir: $htmldir
-EOF
-
-  f.write(template.result(binding))
-  f.close
-
-  return cabal_config, package_db_path
-end
-
-################################################################################
 def sync_local_repo(repo_dir, cache_dir, packages)
   FileUtils.mkdir_p(repo_dir)
   FileUtils.mkdir_p(cache_dir)
