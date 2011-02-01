@@ -62,10 +62,10 @@ when 'cabal', 'list', 'configure', 'build'
   db_args = get_project_installed_packages(project_dir).map {|x| "--package-db=#{x}"}
   if args[0] == 'cabal' then args.shift end
   system "cabal", *args, *db_args
+  unless $?.success? then exit 1 end
 else
   # run any command from inside the project environment
-  system *args
-  unless $?.success? then exit 1 end
+  exec *args
 end
 
 ########################################
