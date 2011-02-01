@@ -67,13 +67,13 @@ end
 # for a list of packages, and creates a package configuration dictionary.
 # note: you can pass the empty list to get the dependencies for a .cabal file in
 # the current directory.
-def get_install_plan(coup_user_dir, package_list)
+def get_install_plan(coup_user_dir, package_list, flags)
   # TODO cache the package configuration based on hash of package_list,
   #      and only use cabal --dry-run if no cache exists.
 
   # note: we always perform the dry run with no local databases.
   # use "--global" so that local user packages (in ~/.cabal, ~/.ghc) are not used.
-  out = `cabal install --global -v0 --dry-run #{package_list.join(" ")}`
+  out = `cabal install --global -v0 --dry-run #{package_list.join(" ")} #{flags.join(' ')}`
   unless $?.success? then exit 1 end
 
   packages = []
@@ -137,6 +137,16 @@ def load_project(coup_user_dir, project_file)
 
   setup_cabal(project_dir, repo_dir, ghc_version)
 
+  installed_packages_file = File.join(project_dir, "installed_packages")
+  if File.exist? installed_packages_file
+    package_db_list = File.read(installed_packages_file).split("\n")
+  else
+    package_db_list = []
+  end
+
+  package_db_list << get_ghc_global_package_path
+  ENV['GHC_PACKAGE_PATH'] = package_db_list.join(":")
+
   return project_dir, repo_dir, ghc_version, package_list
 end
 
@@ -155,9 +165,12 @@ def lookup_package_deps (packages, pkg_deps)
 end
 
 ################################################################################
-def install_package(coup_user_dir, project_dir, ghc_version, package_list)
+# given a list of packages, install those packages and their dependencies, each
+# in its own package database.  if package_list is empty, then install the cabal
+# package from the current directory.
+def install_packages(coup_user_dir, project_dir, ghc_version, package_list, deps_only, flags)
 
-  packages = get_install_plan(coup_user_dir, package_list)
+  packages = get_install_plan(coup_user_dir, package_list, flags)
 
   # the file installed_packages contains the path to each installed package database.
   installed_packages_file = File.join(project_dir, "installed_packages")
@@ -169,12 +182,15 @@ def install_package(coup_user_dir, project_dir, ghc_version, package_list)
 
   f = File.open(installed_packages_file, "a")
 
-  packages.each do |package|
+  packages.each_index do |i|
 
-    package_name    = package['package_name']
-    package_db_path = package['package_db_path']
-    package_deps    = package['package_deps']
-    package_path    = package['package_path']
+    package_name    = packages[i]['package_name']
+    package_db_path = packages[i]['package_db_path']
+    package_deps    = packages[i]['package_deps']
+    package_path    = packages[i]['package_path']
+
+    # check if we are installing a package from the current directory.
+    final_curdir_package = package_list.empty? && i == packages.length - 1
 
     # check if the package is already installed
     out = `ghc-pkg-#{ghc_version} --package-conf=#{package_db_path} describe #{package_name} 2>/dev/null`
@@ -182,13 +198,17 @@ def install_package(coup_user_dir, project_dir, ghc_version, package_list)
     # if the ghc-pkg command was successful, then this package is installed.
     # now, check if it is registered with this project.
     if $?.success?
-      if installed_packages.index(package_db_path)
+      if installed_packages.include?(package_db_path)
         print "Skipping #{package_name}, because it is already installed for this project\n"
       else
         print "Registering existing package #{package_name} with this project\n"
-        f.write(package_db_path + "\n")
-        f.fsync
+        if not flags.include?("--dry-run")
+          f.write(package_db_path + "\n")
+          f.fsync
+        end
       end
+    elsif deps_only && (package_list.include?(package_name) || final_curdir_package)
+      print "Skipping #{package_name}, because we are only installing dependencies\n"
     else
       if File.exist?(package_db_path)
         FileUtils.rm_rf(package_db_path)
@@ -214,11 +234,20 @@ def install_package(coup_user_dir, project_dir, ghc_version, package_list)
       package_db_args = package_db_list.map {|x| "--package-db=#{x}" }
 
       # TODO sanity check that cabal only installs the one package, and no deps.
-      system "cabal", "install", "--prefix=#{package_path}", *package_db_args, package_name
+
+      if final_curdir_package
+        system "cabal", "install", "--prefix=#{package_path}", *package_db_args, *flags
+      else
+        system "cabal", "install", "--prefix=#{package_path}", *package_db_args, *flags, package_name
+      end
       unless $?.success? then exit 1 end
-      f.write(package_db_path + "\n")
-      f.fsync
+      if not flags.include?("--dry-run")
+        f.write(package_db_path + "\n")
+        f.fsync
+      end
     end
   end
   f.close
 end
+
+################################################################################

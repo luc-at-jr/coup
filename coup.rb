@@ -27,9 +27,9 @@ optparse = OptionParser.new do |opts|
     options[:verbose] = true
   end
 
-  opts.on( '-c', '--command CMD', "Run command on remaining arguments" ) do |x|
-    options[:command] = x
-  end
+  # opts.on( '-c', '--command CMD', "Run command on remaining arguments" ) do |x|
+  #   options[:command] = x
+  # end
 
   opts.on( '-p', '--project NAME', 'Select the coup cabal project (name or path)' ) do |p|
     options[:project] = p
@@ -52,14 +52,16 @@ Dir.chdir(workdir)
 
 case args[0]
 when 'install-all' then
-  install_package(coup_user_dir, project_dir, ghc_version, all_packages)
-when 'install' then
-  # TODO support installing package from current directory
-  install_package(coup_user_dir, project_dir, ghc_version, [args[1]])
+  install_packages(coup_user_dir, project_dir, ghc_version, all_packages, false, args[1..-1])
+when 'install', 'install-deps' then
+  flags, pkgs = args[1..-1].partition {|x| x[0] == '-'}
+  install_packages(coup_user_dir, project_dir, ghc_version, pkgs, args[0] == 'install-deps', flags)
+when 'list', 'configure', 'build'
+  system "cabal", *args
 else
-  # TODO support running any command from inside a project environment
-  cmd = options[:command] || 'cabal'
-  unless system cmd, *args then exit 1 end
+  # run any command from inside the project environment
+  system *args
+  unless $?.success? then exit 1 end
 end
 
 ########################################
