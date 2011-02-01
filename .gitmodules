@@ -1,0 +1,6 @@
+[submodule "Cabal"]
+	path = Cabal
+	url = git://github.com/pheaver/Cabal.git
+[submodule "cabal-install"]
+	path = cabal-install
+	url = git://github.com/pheaver/cabal-install.git
