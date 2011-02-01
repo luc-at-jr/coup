@@ -7,7 +7,8 @@ require 'optparse'
 
 # these are equivalent, but the first only works on ruby-1.9
 # require_relative './coup/utils.rb'
-dir = File.dirname(File.realpath(__FILE__))
+
+dir = File.dirname(if File.symlink?(__FILE__) then File.readlink(__FILE__) else __FILE__ end)
 require File.join(dir, "coup", "utils.rb")
 require File.join(dir, "coup", "project.rb")
 
@@ -61,7 +62,7 @@ when 'install', 'install-deps' then
 when 'cabal', 'list', 'configure', 'build'
   db_args = get_project_installed_packages(project_dir).map {|x| "--package-db=#{x}"}
   if args[0] == 'cabal' then args.shift end
-  system "cabal", *args, *db_args
+  system "cabal", *(args + db_args)
   unless $?.success? then exit 1 end
 else
   # run any command from inside the project environment

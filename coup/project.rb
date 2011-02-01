@@ -4,7 +4,7 @@ require 'fileutils'
 
 # these are equivalent, but the first only works on ruby-1.9
 # require_relative './coup/utils.rb'
-dir = File.dirname(File.realpath(__FILE__))
+dir = File.dirname(if File.symlink?(__FILE__) then File.readlink(__FILE__) else __FILE__ end)
 require File.join(dir, "utils.rb")
 
 ################################################################################
@@ -250,10 +250,10 @@ def install_packages(coup_user_dir, project_dir, ghc_version, package_list, deps
       if dry_run
         puts "Would install #{package_name}"
       elsif final_curdir_package
-        system "cabal", "install", "--prefix=#{package_path}", *package_db_args, *flags
+        system "cabal", "install", "--prefix=#{package_path}", *(package_db_args + flags)
         unless $?.success? then exit 1 end
       else
-        system "cabal", "install", "--prefix=#{package_path}", *package_db_args, *flags, package_name
+        system "cabal", "install", "--prefix=#{package_path}", *(package_db_args + flags + [package_name])
         unless $?.success? then exit 1 end
       end
       if not dry_run
