@@ -84,7 +84,7 @@ def get_install_plan(coup_user_dir, project_dir, package_list, flags)
 
   package_db_args = get_project_installed_packages(project_dir).map {|x| "--package-db=#{x}" }
 
-  args = flags + ["--global", "--dry-run", "-v0" ] + package_db_args + package_list
+  args = flags + ["--global", "--dry-run-show-deps", "-v0" ] + package_db_args + package_list
   out = `cabal install #{args.join(' ')}`
   unless $?.success? then exit 1 end
 
