@@ -73,7 +73,9 @@ def get_install_plan(coup_user_dir, package_list, flags)
 
   # note: we always perform the dry run with no local databases.
   # use "--global" so that local user packages (in ~/.cabal, ~/.ghc) are not used.
-  out = `cabal install --global -v0 --dry-run #{package_list.join(" ")} #{flags.join(' ')}`
+
+  args = flags + ["--global", "--dry-run", "-v0" ] + package_list
+  out = `cabal install #{args.join(' ')}`
   unless $?.success? then exit 1 end
 
   packages = []
@@ -172,6 +174,8 @@ def install_packages(coup_user_dir, project_dir, ghc_version, package_list, deps
 
   packages = get_install_plan(coup_user_dir, package_list, flags)
 
+  dry_run = flags.include?("--dry-run")
+
   # the file installed_packages contains the path to each installed package database.
   installed_packages_file = File.join(project_dir, "installed_packages")
   if File.exist? installed_packages_file
@@ -202,20 +206,23 @@ def install_packages(coup_user_dir, project_dir, ghc_version, package_list, deps
         print "Skipping #{package_name}, because it is already installed for this project\n"
       else
         print "Registering existing package #{package_name} with this project\n"
-        if not flags.include?("--dry-run")
-          f.write(package_db_path + "\n")
-          f.fsync
-        end
+        f.write(package_db_path + "\n")
+        f.fsync
       end
     elsif deps_only && (package_list.include?(package_name) || final_curdir_package)
       print "Skipping #{package_name}, because we are only installing dependencies\n"
     else
-      if File.exist?(package_db_path)
-        FileUtils.rm_rf(package_db_path)
-      end
+      # if not dry_run
+      #   if File.exist?(package_db_path)
+      #     FileUtils.rm_rf(package_db_path)
+      #   end
+      # end
 
-      system "ghc-pkg", "init", package_db_path
-      unless $?.success? then exit 1 end
+      # even if we're doing a dry-run, we have to make sure the db exists
+      if not File.exist?(package_db_path)
+        system "ghc-pkg", "init", package_db_path
+        unless $?.success? then exit 1 end
+      end
 
       ########################################
       # setup the list of package databases
@@ -235,13 +242,16 @@ def install_packages(coup_user_dir, project_dir, ghc_version, package_list, deps
 
       # TODO sanity check that cabal only installs the one package, and no deps.
 
-      if final_curdir_package
+      if dry_run
+        puts "Would install #{package_name}"
+      elsif final_curdir_package
         system "cabal", "install", "--prefix=#{package_path}", *package_db_args, *flags
+        unless $?.success? then exit 1 end
       else
         system "cabal", "install", "--prefix=#{package_path}", *package_db_args, *flags, package_name
+        unless $?.success? then exit 1 end
       end
-      unless $?.success? then exit 1 end
-      if not flags.include?("--dry-run")
+      if not dry_run
         f.write(package_db_path + "\n")
         f.fsync
       end
