@@ -46,27 +46,29 @@ args = optparse.order(ARGV)
 
 ########################################
 
-project_dir, repo_dir, ghc_version, all_packages =
-  load_project(coup_user_dir, options[:project] || find_project_file(workdir))
+project = CoupProject.new(coup_user_dir, options[:project] || find_project_file(workdir))
 
 Dir.chdir(workdir)
 
 case args[0]
 when 'install-all' then
-  install_packages(coup_user_dir, project_dir, ghc_version, all_packages, false, args[1..-1])
+  project.install_packages(project.all_packages, false, args[1..-1])
 when 'install', 'install-deps' then
   deps_only = args[0] == 'install-deps'
   args.shift
   flags, pkgs = args.partition {|x| x[0] == '-'}
-  install_packages(coup_user_dir, project_dir, ghc_version, pkgs, deps_only, flags)
+  project.install_packages(pkgs, deps_only, flags)
 when 'cabal', 'list', 'configure', 'build'
-  db_args = get_project_installed_packages(project_dir).map {|x| "--package-db=#{x}"}
   if args[0] == 'cabal' then args.shift end
-  system "cabal", *(args + db_args)
+  system "cabal", *(args + project.cabal_db_flags)
   unless $?.success? then exit 1 end
 else
-  # run any command from inside the project environment
-  exec *args
+  if args.empty?
+    puts "No command given"
+  else
+    # run any command from inside the project environment
+    exec *args
+  end
 end
 
 ########################################
