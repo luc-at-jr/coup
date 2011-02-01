@@ -44,7 +44,7 @@ def setup_cabal(project_dir, repo_dir, ghc_version)
 
   template = ERB.new <<-EOF
 install-dirs user
-  prefix: DUMMY
+  prefix: <%= project_dir %>
   bindir: <%= project_dir %>/bin
   libdir: $prefix
   libsubdir: $pkgid/lib
