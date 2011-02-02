@@ -75,6 +75,7 @@ class CoupProject
     @cache_dir    = File.join(@coup_user_dir, 'cache')
 
     FileUtils.mkdir_p(@project_dir)
+    FileUtils.cp(project_file, @project_dir)
     sync_local_repo(@repo_dir, @cache_dir, packages)
 
     setup_cabal
