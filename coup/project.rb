@@ -74,12 +74,12 @@ class CoupProject
     project_name    = File.basename(project_file.chomp(File.extname(project_file)))
     digest          = Digest::MD5.hexdigest(@all_packages.join) # use all_packages.hash here?
     @ghc_version    = get_ghc_version()
-    @project_dir     = File.join( @coup_user_dir,
-                                  "projects",
-                                  "#{project_name}-#{digest}",
-                                  "ghc-#{@ghc_version}" )
 
-    @repo_dir       = File.join(@project_dir, 'packages')
+    project_basedir  = File.join(@coup_user_dir, "projects", "#{project_name}-#{digest}")
+
+    @project_dir     = File.join(project_basedir, "ghc-#{@ghc_version}")
+
+    @repo_dir       = File.join(project_basedir, 'packages')
     @cache_dir      = File.join(@coup_user_dir, 'cache')
 
     FileUtils.mkdir_p(@project_dir)
