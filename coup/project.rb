@@ -19,8 +19,16 @@ class CoupProject
     File.join(@project_dir, "installed_packages")
   end
 
+  def project_db_path
+    File.join(@project_dir, "packages.conf.d")
+  end
+
+  def cabal_config_path
+    File.join(@project_dir, "cabal.config")
+  end
+
   def get_package_path(package, digest)
-    File.join(@coup_user_dir, "package", package + '-' + digest)
+    File.join(@coup_user_dir, "packages", package + '-' + digest)
   end
 
   def get_package_db_path(package_path)
@@ -40,9 +48,6 @@ class CoupProject
     get_installed_packages.map {|x| "--package-db=#{x}"}
   end
 
-  def cabal_config_file
-    File.join(@project_dir, "cabal.config")
-  end
 
   ########################################
   def initialize(coup_user_dir, project_file)
@@ -66,16 +71,19 @@ class CoupProject
 
     # TODO warn if more than one version of same package
 
-    project_name  = File.basename(project_file.chomp(File.extname(project_file)))
-    digest        = Digest::MD5.hexdigest(@all_packages.join) # use package_list.hash here?
-    @ghc_version  = get_ghc_version()
-    @project_dir  = File.join(@coup_user_dir, "projects", "#{project_name}-#{digest}-#{@ghc_version}")
+    project_name    = File.basename(project_file.chomp(File.extname(project_file)))
+    digest          = Digest::MD5.hexdigest(@all_packages.join) # use package_list.hash here?
+    @ghc_version    = get_ghc_version()
+    @project_dir     = File.join( @coup_user_dir,
+                                  "projects",
+                                  "#{project_name}-#{digest}",
+                                  "ghc-#{@ghc_version}" )
 
-    @repo_dir     = File.join(@project_dir, 'packages')
-    @cache_dir    = File.join(@coup_user_dir, 'cache')
+    @repo_dir       = File.join(@project_dir, 'packages')
+    @cache_dir      = File.join(@coup_user_dir, 'cache')
 
     FileUtils.mkdir_p(@project_dir)
-    FileUtils.cp(project_file, @project_dir)
+    FileUtils.cp(project_file, File.dirname(@project_dir))
     sync_local_repo(@repo_dir, @cache_dir, packages)
 
     setup_cabal
@@ -86,40 +94,33 @@ class CoupProject
   end
 
   ########################################
-  def setup_cabal()
+  def setup_cabal
 
-    project_db_path = File.join(@project_dir, "packages-#{@ghc_version}.conf.d")
-
-    if File.exists?(project_db_path)
-      FileUtils.rm_rf(project_db_path)
+    if not File.exists?(project_db_path)
+      system "ghc-pkg", "init", project_db_path
+      unless $?.success? then exit 1 end
     end
 
-    system "ghc-pkg", "init", project_db_path
-    unless $?.success? then exit 1 end
+    if not File.exist?(cabal_config_path)
 
-    # TODO let user specify values for the many cabal config options.
-    cabal_env = {}
-    cabal_env['local-repo']           = @repo_dir
-    cabal_env['with-compiler']        = 'ghc-' + @ghc_version
-    cabal_env['package-db']           = project_db_path
-    # cabal_env['build-summary']        = File.join(dir, "logs", "build.log")
-    # cabal_env['executable-stripping'] = "True"
+      cabal_env = {}
+      cabal_env['local-repo']           = @repo_dir
+      cabal_env['with-compiler']        = 'ghc-' + @ghc_version
+      cabal_env['package-db']           = project_db_path
+      # cabal_env['build-summary']        = File.join(dir, "logs", "build.log")
+      # cabal_env['executable-stripping'] = "True"
 
-    if File.exist?(cabal_config_file)
-      File.delete(cabal_config_file)
-    end
+      f = File.new(cabal_config_path, "w")
+      cabal_env.each do |key, val|
+        f.write(key + ': ' + val + "\n")
+      end
+      # note: the prefix for this project should never be used, because every call
+      # to 'cabal' should its own --prefix switch.
 
-    f = File.new(cabal_config_file, "w")
-    cabal_env.each do |key, val|
-      f.write(key + ': ' + val + "\n")
-    end
-    # note: the prefix for this project should never be used, because every call
-    # to 'cabal' should its own --prefix switch.
+      # binaries are always installed to the project dir, not the prefix for a
+      # particular package.
 
-    # binaries are always installed to the project dir, not the prefix for a
-    # particular package.
-
-    template = ERB.new <<-EOF
+      template = ERB.new <<-EOF
 install-dirs user
   prefix: <%= @project_dir %>
   bindir: <%= @project_dir %>/bin
@@ -133,10 +134,11 @@ install-dirs user
   -- haddockdir: $htmldir
 EOF
 
-    f.write(template.result(binding))
-    f.close
+      f.write(template.result(binding))
+      f.close
 
-    ENV['CABAL_CONFIG'] = cabal_config_file
+    end
+    ENV['CABAL_CONFIG'] = cabal_config_path
   end
 
   ########################################
@@ -225,6 +227,8 @@ EOF
       if $?.success? and not final_curdir_package
         # now, check if the installed package is registered with this project.
         if installed_packages.include?(package_db_path)
+          # hmmm... this means that cabal thinks we should install the package,
+          # even though it already exists in the database.  maybe this is an error?
           print "Skipping #{package_name}, because it is already installed for this project\n"
         else
           print "Registering existing package #{package_name} with this project\n"
