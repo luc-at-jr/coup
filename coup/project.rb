@@ -62,17 +62,17 @@ class CoupProject
     packages = read_package_list(project_file)
 
     # packages is a dictionary of package lists, indexed by repo name.
-    # package_list is a flattened list of all packages.
+    # all_packages is a flattened list of all packages.
     @all_packages = []
     packages.each do |hackage_url, list|
-      package_list = @all_packages + list
+      @all_packages = @all_packages + list
     end
     @all_packages.sort!
 
     # TODO warn if more than one version of same package
 
     project_name    = File.basename(project_file.chomp(File.extname(project_file)))
-    digest          = Digest::MD5.hexdigest(@all_packages.join) # use package_list.hash here?
+    digest          = Digest::MD5.hexdigest(@all_packages.join) # use all_packages.hash here?
     @ghc_version    = get_ghc_version()
     @project_dir     = File.join( @coup_user_dir,
                                   "projects",
