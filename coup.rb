@@ -60,7 +60,8 @@ when 'install', 'install-deps' then
   project.install_packages(pkgs, deps_only, flags)
 when 'cabal', 'list', 'configure', 'build'
   if args[0] == 'cabal' then args.shift end
-  system "cabal", *(args + project.cabal_db_flags)
+  if args[0] != 'build' then args = args + project.cabal_db_flags end
+  system "cabal", *args
   unless $?.success? then exit 1 end
 else
   if not args.empty?
