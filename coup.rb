@@ -63,9 +63,7 @@ when 'cabal', 'list', 'configure', 'build'
   system "cabal", *(args + project.cabal_db_flags)
   unless $?.success? then exit 1 end
 else
-  if args.empty?
-    puts "No command given"
-  else
+  if not args.empty?
     # run any command from inside the project environment
     exec *args
   end
