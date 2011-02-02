@@ -102,6 +102,7 @@ class CoupProject
     end
 
     if not File.exist?(cabal_config_path)
+      puts "Creating cabal configuration in #{cabal_config_path}"
 
       cabal_env = {}
       cabal_env['local-repo']           = @repo_dir
