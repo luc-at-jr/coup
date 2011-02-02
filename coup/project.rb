@@ -123,15 +123,15 @@ class CoupProject
       template = ERB.new <<-EOF
 install-dirs user
   prefix: <%= @project_dir %>
-  bindir: <%= @project_dir %>/bin
+  bindir: $prefix/bin
   libdir: $prefix
-  libsubdir: $pkgid/lib
-  libexecdir: $prefix/$pkgid/libexec
+  libsubdir: lib
+  libexecdir: $prefix/libexec
   datadir: $prefix
-  datasubdir: $pkgid/share
-  docdir: $datadir/$pkgid/doc
-  -- htmldir: $docdir/html
-  -- haddockdir: $htmldir
+  datasubdir: share
+  docdir: $datadir/doc
+  htmldir: $docdir/html
+  haddockdir: $htmldir
 EOF
 
       f.write(template.result(binding))
