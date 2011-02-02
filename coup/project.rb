@@ -131,11 +131,6 @@ class CoupProject
       cabal_env.each do |key, val|
         f.write(key + ': ' + val + "\n")
       end
-      # note: the prefix for this project should never be used, because every call
-      # to 'cabal' should its own --prefix switch.
-
-      # binaries are always installed to the project dir, not the prefix for a
-      # particular package.
 
       template = ERB.new <<-EOF
 install-dirs user
