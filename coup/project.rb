@@ -69,7 +69,23 @@ class CoupProject
     end
     @all_packages.sort!
 
-    # TODO warn if more than one version of same package
+    all_packages.each_index do |i|
+      if (i < all_packages.length-1)
+        pkg1 = all_packages[i]
+        pkg2 = all_packages[i+1]
+
+        name1, version1 = parse_package_name_version(pkg1)
+        name2, version2 = parse_package_name_version(pkg2)
+        basename = File.basename(project_file)
+        if name1 == name2
+          if version1 == version2
+            warn "WARNING: In #{basename}, package #{pkg1} is listed twice."
+          else
+            warn "WARNING: In #{basename}, multiple versions of package: #{pkg1}, #{pkg2}."
+          end
+        end
+      end
+    end
 
     project_name    = File.basename(project_file.chomp(File.extname(project_file)))
     digest          = Digest::MD5.hexdigest(@all_packages.join) # use all_packages.hash here?
