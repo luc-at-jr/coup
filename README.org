@@ -6,38 +6,22 @@ Haskell library versions that the project is allowed to use, and maintains a
 local ghc database and cabal settings for that list.
 
 Some features:
-- coup can generate the list of packages from a .cabal file.
+- works relatively seamlessly around cabal.
+- projects are uniquely identified by the package list provided by the user.
+  - only packages from the project's package list may be installed.
+  - any number of versions of a project may exist, each one with its own package
+    list.
 - separate ghc database and settings for each project.
-  - the name of the local ghc/cabal database and settings is based on a hash of
-    the list of packages, so two projects can share the same ghc database simply
-    by having an identical list.
 - shared package cache between all projects, to avoid downloading duplicate
   tarballs.
+- identical installed libraries are shared between projects.
 
-coup does not make it easy to use any libraries that it builds.  Its main use
-case is to install library dependencies and build binaries in place.
+coup requires a patched version of Cabal and cabal-install, available as
+submodules in the coup repository.
 
 * Commands
 
-** init
-Create the hackage list from a .cabal file.  Will not overwrite unless the
---force option is specified.
-
-** configure
-Run cabal configure.
-
-** install-deps
-Install all dependencies (all files listed in the .hackage file).
-
-** build
-Build this package in place.  Optional --deps option means run install-deps first.
-
-** install
-Build and install this package. Optional --deps option means run install-deps first.
-
 * TODOs
-- Um, get started?
-- Define gem package
 
 * (Settings)                                                       :noexport:
 #+TITLE:
