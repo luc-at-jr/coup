@@ -36,9 +36,11 @@ class CoupProject
   end
 
   def add_installed_package(package_db)
-    @package_db_list << package_db
-    File.open(installed_packages_file, "a") do |f|
-      f.write(package_db)
+    if not @package_db_list.include?(package_db)
+      @package_db_list << package_db
+      File.open(installed_packages_file, "a") do |f|
+        f.write(package_db + "\n")
+      end
     end
   end
 
