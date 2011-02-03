@@ -56,7 +56,7 @@ when 'install-all' then
 when 'install', 'install-deps' then
   deps_only = args[0] == 'install-deps'
   args.shift
-  flags, pkgs = args.partition {|x| x[0] == '-'}
+  flags, pkgs = args.partition {|x| x[0].chr == '-'}
   project.install_packages(pkgs, deps_only, flags)
 when 'cabal', 'list', 'configure', 'build'
   if args[0] == 'cabal' then args.shift end
