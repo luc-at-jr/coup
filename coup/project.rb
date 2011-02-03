@@ -286,21 +286,18 @@ EOF
         if dry_run
           puts "Would install #{package_name}"
         else
-          args = package_db_args + flags
-          lines = `cabal install #{args.join(' ')} -v1 --dry-run`.split("\n")
+          cabal_args = package_db_args + flags
+          if not final_curdir_package then cabal_args << package_name end
+
+          lines = `cabal install #{cabal_args.join(' ')} -v1 --dry-run`.split("\n")
           pkgs = lines.drop(2)
           if pkgs.length != 1
             warn "WARNING: cabal should only install one package, #{package_name}."
             warn "         However, cabal says it's going to install these packages:"
             warn "         #{pkgs.join(', ')}"
           end
-          if final_curdir_package
-            system "cabal", "install", "--prefix=#{package_path}", *(package_db_args + flags)
-            unless $?.success? then exit 1 end
-          else
-            system "cabal", "install", "--prefix=#{package_path}", *(package_db_args + flags + [package_name])
-            unless $?.success? then exit 1 end
-          end
+          system "cabal", "install", "--prefix=#{package_path}", *cabal_args
+          unless $?.success? then exit 1 end
           f.write(package_db_path + "\n")
           f.fsync
         end
