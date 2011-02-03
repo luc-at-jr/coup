@@ -66,8 +66,7 @@ class CoupProject
   end
 
   def cabal_db_flags(extra_db_path = nil)
-    list = get_installed_packages
-    if extra_db_path then list << extra_db_path end
+    list = get_installed_packages + (if extra_db_path then [extra_db_path] else [] end)
     return list.map {|x| "--package-db=#{x}"}
   end
 
