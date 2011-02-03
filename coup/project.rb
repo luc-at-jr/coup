@@ -35,22 +35,44 @@ class CoupProject
     File.join(package_path, "package.conf.d")
   end
 
-  def get_installed_packages
-    if File.exist? installed_packages_file
-      package_db_list = File.read(installed_packages_file).split("\n")
-    else
-      package_db_list = []
+  def add_installed_package(package_db)
+    @package_db_list << package_db
+    File.open(installed_packages_file, "a") do |f|
+      f.write(package_db)
     end
-    return package_db_list
   end
 
-  def cabal_db_flags
-    get_installed_packages.map {|x| "--package-db=#{x}"}
+  def get_installed_packages
+    if @package_db_list then return @package_db_list end
+
+    if File.exist? installed_packages_file
+      @package_db_list = File.read(installed_packages_file).split("\n")
+    else
+      @package_db_list = []
+    end
+
+    @package_db_list.delete_if do |x|
+      if File.exist?(x)
+        false
+      else
+        warn "WARNING: package database does not exist, ignoring:"
+        warn "         #{x}"
+        true
+      end
+    end
+    return @package_db_list
   end
 
+  def cabal_db_flags(extra_db_path = nil)
+    list = get_installed_packages
+    if extra_db_path then list << extra_db_path end
+    return list.map {|x| "--package-db=#{x}"}
+  end
 
   ########################################
   def initialize(coup_user_dir, project_file)
+    puts "Loading project #{project_file} ..."
+
     @coup_user_dir = coup_user_dir
 
     if project_file.nil?
@@ -159,6 +181,7 @@ EOF
   # note: you can pass the empty list to get the dependencies for a .cabal file in
   # the current directory.
   def get_install_plan(pkgs, flags)
+    puts "Getting install plan ..."
     # note: we always perform the dry run with no local databases.
     # use "--global" so that local user packages (in ~/.cabal, ~/.ghc) are not used.
 
@@ -216,10 +239,7 @@ EOF
 
     dry_run = flags.include?("--dry-run")
 
-    installed_packages = get_installed_packages
-
-    # the file installed_packages contains the path to each installed package database.
-    f = File.open(installed_packages_file, "a")
+    get_installed_packages  # initializes @package_db_list
 
     packages.each_index do |i|
 
@@ -238,9 +258,7 @@ EOF
       # however, do not skip if we're installing from a .cabal in the current directory.
       if $?.success? and not final_curdir_package
         # now, check if the installed package is registered with this project.
-        if installed_packages.include?(package_db_path)
-          # hmmm... this means that cabal thinks we should install the package,
-          # even though it already exists in the database.  maybe this is an error?
+        if @package_db_list.include?(package_db_path)
           print "Skipping #{package_name}, because it is already installed for this project\n"
         else
           print "Registering existing package #{package_name} with this project\n"
@@ -263,30 +281,12 @@ EOF
         end
 
         ########################################
-        # setup the list of package databases
-
-        # get database path to each of this package's dependencies.
-        package_db_list = lookup_package_deps(packages, package_deps).compact
-
-        # remove the nil entries (dependencies that are in global db)
-        package_db_list.compact!
-
-        # add the packages that are already installed, and remove duplicates.
-        # this is necessary to discover packages that are not in the project repo,
-        # but were installed from a local .cabal file.
-        package_db_list = (installed_packages + package_db_list).uniq
-
-        # add the path for this package's db on the end, causing it to get registered there.
-        package_db_list << package_db_path
-
-        ########################################
         # run the cabal command
-        package_db_args = package_db_list.map {|x| "--package-db=#{x}" }
 
         if dry_run
           puts "Would install #{package_name}"
         else
-          cabal_args = package_db_args + flags
+          cabal_args = cabal_db_flags(package_db_path) + flags
           if not final_curdir_package then cabal_args << package_name end
 
           lines = `cabal install #{cabal_args.join(' ')} -v1 --dry-run`.split("\n")
@@ -302,12 +302,10 @@ EOF
           end
           system "cabal", "install", "--prefix=#{package_path}", *cabal_args
           unless $?.success? then exit 1 end
-          f.write(package_db_path + "\n")
-          f.fsync
+          add_installed_package(package_db_path)
         end
       end
     end
-    f.close
   end
 
 end

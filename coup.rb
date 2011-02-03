@@ -58,9 +58,9 @@ when 'install', 'install-deps' then
   args.shift
   flags, pkgs = args.partition {|x| x[0].chr == '-'}
   project.install_packages(pkgs, deps_only, flags)
-when 'cabal', 'list', 'configure', 'build'
+when 'cabal', 'list', 'configure', 'build', 'clean'
   if args[0] == 'cabal' then args.shift end
-  if args[0] != 'build' then args = args + project.cabal_db_flags end
+  if ['list', 'configure'].include?(args[0]) then args = args + project.cabal_db_flags end
   system "cabal", *args
   unless $?.success? then exit 1 end
 else
