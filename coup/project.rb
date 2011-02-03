@@ -264,8 +264,7 @@ EOF
           print "Skipping #{package_name}, because it is already installed for this project\n"
         else
           print "Registering existing package #{package_name} with this project\n"
-          f.write(package_db_path + "\n")
-          f.fsync
+          add_installed_package(package_db_path)
         end
       elsif deps_only && (package_list.include?(package_name) || final_curdir_package)
         print "Skipping #{package_name}, because we are only installing dependencies\n"
