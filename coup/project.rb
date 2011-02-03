@@ -290,6 +290,10 @@ EOF
           if not final_curdir_package then cabal_args << package_name end
 
           lines = `cabal install #{cabal_args.join(' ')} -v1 --dry-run`.split("\n")
+          unless $?.success? then
+            puts lines
+            exit 1
+          end
           pkgs = lines.drop(2)
           if pkgs.length != 1
             warn "WARNING: cabal should only install one package, #{package_name}."
