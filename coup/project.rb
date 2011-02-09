@@ -74,6 +74,12 @@ class CoupProject
   def initialize(coup_user_dir, project_file)
     puts "Loading project #{project_file} ..."
 
+    require_command("cabal")
+    out = `cabal --version`
+    unless out =~ /0\.9\.5/
+      raise "cabal-install is wrong version.  need 0.9.5"
+    end
+
     @coup_user_dir = coup_user_dir
 
     if project_file.nil?
