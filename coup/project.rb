@@ -348,11 +348,11 @@ EOF
             pkgs = [package_name]
           end
           lines = run_cabal_command("install", pkgs, flags + ["-v1", "--dry-run"], package_db_path, true)
-          pkgs = lines.drop(2)
-          if pkgs.length != 1
+          xs = lines.drop(2)
+          if xs.length != 1
             warn "WARNING: cabal should only install one package, #{package_name}."
             warn "         However, cabal says it's going to install these packages:"
-            warn "         #{pkgs.join(', ')}"
+            warn "         #{xs.join(', ')}"
           end
           run_cabal_command("install", pkgs, flags + ["--prefix=#{package_path}"], package_db_path)
           unless $?.success? then exit 1 end
