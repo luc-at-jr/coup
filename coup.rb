@@ -60,9 +60,12 @@ when 'install', 'install-deps' then
   project.install_packages(pkgs, deps_only, flags)
 when 'cabal', 'list', 'configure', 'build', 'clean'
   if args[0] == 'cabal' then args.shift end
-  if ['list', 'configure'].include?(args[0]) then args = args + project.cabal_db_flags end
-  system "cabal", *args
-  unless $?.success? then exit 1 end
+
+  cmd = args[0]
+  args.shift
+
+  flags, pkgs = args.partition {|x| x[0].chr == '-'}
+  project.run_cabal_command(cmd, pkgs, flags)
 else
   if not args.empty?
     # run any command from inside the project environment

@@ -35,6 +35,14 @@ class CoupProject
     File.join(package_path, "package.conf.d")
   end
 
+  # the 'dist' directory for local builds.
+  # note: this could be a problem when there are multiple different cabal
+  # packages of the same name within a project, such as dummy "test.cabal"
+  # projects.
+  def get_build_path(name)
+    File.join(@project_dir, "dist", name)
+  end
+
   def add_installed_package(package_db)
     if not @package_db_list.include?(package_db)
       @package_db_list << package_db
@@ -63,6 +71,48 @@ class CoupProject
       end
     end
     return @package_db_list
+  end
+
+  def run_cabal_command(cmd, pkgs, flags, capture_output = false)
+    args = pkgs + flags
+
+    # these commands take the --package-db flag.
+    if ["list", "configure", "install"].include? cmd
+      args = args + cabal_db_flags
+    end
+
+    # when any of these commands is run without any packages,
+    # then we are running cabal on a .cabal in the current directory.
+    # find the name of the .cabal file and use it to create a builddir flag.
+    if pkgs.empty? && ["configure", "install", "build", "clean"].include?(cmd)
+      package_name = find_cabal_file
+      if package_name
+        build_path = get_build_path(package_name)
+        args << "--builddir=#{build_path}"
+      end
+      system "ln", "-sf", build_path, "./dist"
+    end
+
+    if capture_output
+      out = `cabal #{cmd} #{pkgs.join(' ')} #{args.join(' ')}`
+      unless $?.success? then
+        puts out
+        exit 1
+      end
+      return out.split("\n")
+    else
+      system "cabal", cmd, *(pkgs + args)
+      unless $?.success? then exit 1 end
+    end
+  end
+
+  def find_cabal_file
+    cabal_files = Dir.entries(".").find_all {|x| File.extname(x) == ".cabal" }
+    if cabal_files.length == 1
+      cabal_files[0].chomp(".cabal")
+    else
+      nil
+    end
   end
 
   def cabal_db_flags(extra_db_path = nil)
@@ -292,21 +342,19 @@ EOF
         if dry_run
           puts "Would install #{package_name}"
         else
-          cabal_args = cabal_db_flags(package_db_path) + flags
-          if not final_curdir_package then cabal_args << package_name end
-
-          lines = `cabal install #{cabal_args.join(' ')} -v1 --dry-run`.split("\n")
-          unless $?.success? then
-            puts lines
-            exit 1
+          if final_curdir_package then
+            pkgs = []
+          else
+            pkgs = [package_name]
           end
+          lines = run_cabal_command("install", pkgs, flags + ["-v1", "--dry-run"], true)
           pkgs = lines.drop(2)
           if pkgs.length != 1
             warn "WARNING: cabal should only install one package, #{package_name}."
             warn "         However, cabal says it's going to install these packages:"
             warn "         #{pkgs.join(', ')}"
           end
-          system "cabal", "install", "--prefix=#{package_path}", *cabal_args
+          run_cabal_command("install", pkgs, flags + ["--prefix=#{package_path}"])
           unless $?.success? then exit 1 end
           add_installed_package(package_db_path)
         end
