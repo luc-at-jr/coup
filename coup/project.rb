@@ -73,12 +73,12 @@ class CoupProject
     return @package_db_list
   end
 
-  def run_cabal_command(cmd, pkgs, flags, capture_output = false)
+  def run_cabal_command(cmd, pkgs, flags, extra_db_path = nil, capture_output = false)
     args = pkgs + flags
 
     # these commands take the --package-db flag.
     if ["list", "configure", "install"].include? cmd
-      args = args + cabal_db_flags
+      args = args + cabal_db_flags(extra_db_path)
     end
 
     # when any of these commands is run without any packages,
@@ -94,14 +94,14 @@ class CoupProject
     end
 
     if capture_output
-      out = `cabal #{cmd} #{pkgs.join(' ')} #{args.join(' ')}`
+      out = `cabal #{cmd} #{args.join(' ')}`
       unless $?.success? then
         puts out
         exit 1
       end
       return out.split("\n")
     else
-      system "cabal", cmd, *(pkgs + args)
+      system "cabal", cmd, *args
       unless $?.success? then exit 1 end
     end
   end
@@ -347,14 +347,14 @@ EOF
           else
             pkgs = [package_name]
           end
-          lines = run_cabal_command("install", pkgs, flags + ["-v1", "--dry-run"], true)
+          lines = run_cabal_command("install", pkgs, flags + ["-v1", "--dry-run"], package_db_path, true)
           pkgs = lines.drop(2)
           if pkgs.length != 1
             warn "WARNING: cabal should only install one package, #{package_name}."
             warn "         However, cabal says it's going to install these packages:"
             warn "         #{pkgs.join(', ')}"
           end
-          run_cabal_command("install", pkgs, flags + ["--prefix=#{package_path}"])
+          run_cabal_command("install", pkgs, flags + ["--prefix=#{package_path}"], package_db_path)
           unless $?.success? then exit 1 end
           add_installed_package(package_db_path)
         end
