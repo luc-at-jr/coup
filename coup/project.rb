@@ -92,6 +92,7 @@ class CoupProject
       else
         raise 'No cabal file found'
       end
+      FileUtils.rm_rf("./dist")
       system "ln", "-sf", build_path, "./dist"
     end
 
