@@ -89,6 +89,8 @@ class CoupProject
       if package_name
         build_path = get_build_path(package_name)
         args << "--builddir=#{build_path}"
+      else
+        raise 'No cabal file found'
       end
       system "ln", "-sf", build_path, "./dist"
     end
