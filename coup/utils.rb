@@ -91,7 +91,7 @@ def find_project_file(dir)
              find_project_file(File.dirname(dir))
            end
          when 1 then File.join(dir, project_files[0])
-         else raise "Multiple project files found in #{dir.path}"
+         else raise "Multiple project files found in #{dir}"
          end
 end
 
