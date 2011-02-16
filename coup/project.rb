@@ -316,7 +316,7 @@ EOF
 
       # if the ghc-pkg command was successful, then this package is installed, so skip it.
       # however, do not skip if we're installing from a .cabal in the current directory.
-      if $?.success? and not final_curdir_package
+      if $?.success? and not final_curdir_package and not flags.include?("--reinstall")
         # now, check if the installed package is registered with this project.
         if @package_db_list.include?(package_db_path)
           print "Skipping #{package_name}, because it is already installed for this project\n"
