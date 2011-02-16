@@ -77,7 +77,7 @@ class CoupProject
     args = pkgs + flags
 
     # these commands take the --package-db flag.
-    if ["list", "configure", "install"].include? cmd
+    if ["configure", "install"].include? cmd
       args = args + cabal_db_flags(extra_db_path)
     end
 
