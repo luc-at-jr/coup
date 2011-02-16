@@ -58,7 +58,7 @@ when 'install', 'install-deps' then
   args.shift
   flags, pkgs = args.partition {|x| x[0].chr == '-'}
   project.install_packages(pkgs, deps_only, flags)
-when 'cabal', 'list', 'configure', 'build', 'clean'
+when 'cabal', 'configure', 'build', 'clean'
   if args[0] == 'cabal' then args.shift end
 
   cmd = args[0]
@@ -66,6 +66,11 @@ when 'cabal', 'list', 'configure', 'build', 'clean'
 
   flags, pkgs = args.partition {|x| x[0].chr == '-'}
   project.run_cabal_command(cmd, pkgs, flags)
+when 'describe', 'unregister', 'list'
+  # TODO for unregister, remove the file from the project list.
+  cmd = args[0]
+  args.shift
+  system "ghc-pkg", cmd, *args
 else
   if not args.empty?
     # run any command from inside the project environment
