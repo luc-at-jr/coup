@@ -66,7 +66,7 @@ when 'cabal', 'configure', 'build', 'clean'
 
   flags, pkgs = args.partition {|x| x[0].chr == '-'}
   project.run_cabal_command(cmd, pkgs, flags)
-when 'describe', 'unregister', 'list'
+when 'describe', 'unregister', 'list', 'check'
   # TODO for unregister, remove the file from the project list.
   cmd = args[0]
   args.shift
