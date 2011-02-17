@@ -314,19 +314,26 @@ EOF
       # check if the package is already installed
       out = `ghc-pkg-#{@ghc_version} --package-conf=#{package_db_path} describe #{package_name} 2>/dev/null`
 
+      skip = false
+
       # if the ghc-pkg command was successful, then this package is installed, so skip it.
       # however, do not skip if we're installing from a .cabal in the current directory.
       if $?.success? and not final_curdir_package and not flags.include?("--reinstall")
         # now, check if the installed package is registered with this project.
         if @package_db_list.include?(package_db_path)
-          print "Skipping #{package_name}, because it is already installed for this project\n"
+          warn "WARNING: package #{package_name} is already installed for this project, "
+          warn "         but cabal wants to reinstall it, so we're going to!"
         else
           print "Registering existing package #{package_name} with this project\n"
           add_installed_package(package_db_path)
+          skip = true
         end
       elsif deps_only && (package_list.include?(package_name) || final_curdir_package)
         print "Skipping #{package_name}, because we are only installing dependencies\n"
-      else
+        skip = true
+      end
+
+      if not skip
         # if not dry_run
         #   if File.exist?(package_db_path)
         #     FileUtils.rm_rf(package_db_path)
@@ -353,9 +360,11 @@ EOF
           lines = run_cabal_command("install", pkgs, flags + ["-v1", "--dry-run"], package_db_path, true)
           xs = lines.drop(2)
           if xs.length != 1
-            warn "WARNING: cabal should only install one package, #{package_name}."
-            warn "         However, cabal says it's going to install these packages:"
-            warn "         #{xs.join(', ')}"
+            warn "ERROR: cabal should only install one package, #{package_name}."
+            warn "       However, cabal says it's going to install these packages:"
+            warn "       #{xs.join(', ')}"
+            warn "       You may have to remove these packages manually..."
+            exit 1
           end
           run_cabal_command("install", pkgs, flags + ["--prefix=#{package_path}"], package_db_path)
           unless $?.success? then exit 1 end
