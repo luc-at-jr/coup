@@ -85,13 +85,8 @@ class CoupProject
     # then we are running cabal on a .cabal in the current directory.
     # find the name of the .cabal file and use it to create a builddir flag.
     if pkgs.empty? && ["configure", "install", "build", "clean"].include?(cmd)
-      package_name = find_cabal_file
-      if package_name
-        build_path = get_build_path(package_name)
-        args << "--builddir=#{build_path}"
-      else
-        raise 'No cabal file found'
-      end
+      build_path = get_build_path(find_cabal_file)
+      args << "--builddir=#{build_path}"
       FileUtils.rm_rf("./dist")
       system "ln", "-sf", build_path, "./dist"
     end
@@ -111,10 +106,10 @@ class CoupProject
 
   def find_cabal_file
     cabal_files = Dir.entries(".").find_all {|x| File.extname(x) == ".cabal" }
-    if cabal_files.length == 1
-      cabal_files[0].chomp(".cabal")
-    else
-      nil
+    case cabal_files.length
+    when 0 then raise 'No cabal file found'
+    when 1 then cabal_files[0].chomp(".cabal")
+    else raise 'Multiple cabal files found'
     end
   end
 
