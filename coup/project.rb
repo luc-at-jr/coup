@@ -181,8 +181,7 @@ class CoupProject
 
     setup_cabal
 
-    project_db_list = get_installed_packages
-    project_db_list << get_ghc_global_package_path
+    project_db_list = get_installed_packages + [get_ghc_global_package_path]
     ENV['GHC_PACKAGE_PATH'] = project_db_list.join(':')
   end
 
