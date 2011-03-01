@@ -201,6 +201,7 @@ class CoupProject
       cabal_env['local-repo']           = @repo_dir
       cabal_env['with-compiler']        = 'ghc-' + @ghc_version
       cabal_env['package-db']           = project_db_path
+      cabal_env['world-file']           = File.join(@project_dir, "world")
       # cabal_env['build-summary']        = File.join(dir, "logs", "build.log")
       # cabal_env['executable-stripping'] = "True"
 
