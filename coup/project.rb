@@ -119,7 +119,11 @@ class CoupProject
   end
 
   ########################################
-  def initialize(coup_user_dir, project_file)
+  def initialize(coup_user_dir, options)
+    # @profiling = options[:profiling]
+    @verbose   = options[:verbose]
+
+    project_file = options[:project] || find_project_file(Dir.getwd)
     puts "Loading project #{project_file} ..."
 
     require_command("cabal")
@@ -171,6 +175,7 @@ class CoupProject
     project_basedir  = File.join(@coup_user_dir, "projects", "#{project_name}-#{digest}")
 
     @project_dir     = File.join(project_basedir, "ghc-#{@ghc_version}")
+    puts "Project directory is: #{@project_dir}" if @verbose
 
     @repo_dir       = File.join(project_basedir, 'packages')
     @cache_dir      = File.join(@coup_user_dir, 'cache')
@@ -306,26 +311,26 @@ EOF
       # check if we are installing a package from the current directory.
       final_curdir_package = package_list.empty? && i == packages.length - 1
 
-      # check if the package is already installed
-      out = `ghc-pkg-#{@ghc_version} --package-conf=#{package_db_path} describe #{package_name} 2>/dev/null`
-
       skip = false
 
-      # if the ghc-pkg command was successful, then this package is installed, so skip it.
-      # however, do not skip if we're installing from a .cabal in the current directory.
-      if $?.success? and not final_curdir_package and not flags.include?("--reinstall")
-        # now, check if the installed package is registered with this project.
-        if @package_db_list.include?(package_db_path)
-          warn "WARNING: package #{package_name} is already installed for this project, "
-          warn "         but cabal wants to reinstall it, so we're going to!"
-        else
-          print "Registering existing package #{package_name} with this project\n"
-          add_installed_package(package_db_path)
-          skip = true
-        end
-      elsif deps_only && (package_list.include?(package_name) || final_curdir_package)
-        print "Skipping #{package_name}, because we are only installing dependencies\n"
+      if final_curdir_package
+        print "Skipping #{package_name}, because we are only installing dependencies\n" if @verbose
         skip = true
+      elsif not flags.include?("--reinstall")
+        # check if the package is already installed
+        out = `ghc-pkg-#{@ghc_version} --package-conf=#{package_db_path} describe #{package_name} 2>/dev/null`
+
+        if $?.success?
+          # now, check if the installed package is registered with this project.
+          if @package_db_list.include?(package_db_path)
+            warn "WARNING: package #{package_name} is already installed for this project, "
+            warn "         but cabal wants to reinstall it, so we're going to!"
+          else
+            print "Registering existing package #{package_name} with this project\n" if @verbose
+            add_installed_package(package_db_path)
+            skip = true
+          end
+        end
       end
 
       if not skip

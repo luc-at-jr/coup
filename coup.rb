@@ -14,7 +14,6 @@ require File.join(dir, "coup", "project.rb")
 
 ################################################################################
 coup_user_dir = File.join(ENV['HOME'], ".coup")
-workdir       = Dir.getwd
 
 options = {}
 
@@ -46,9 +45,7 @@ args = optparse.order(ARGV)
 
 ########################################
 
-project = CoupProject.new(coup_user_dir, options[:project] || find_project_file(workdir))
-
-Dir.chdir(workdir)
+project = CoupProject.new(coup_user_dir, options)
 
 case args[0]
 when 'install-all' then

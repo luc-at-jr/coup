@@ -97,6 +97,8 @@ end
 
 ################################################################################
 def sync_local_repo(repo_dir, cache_dir, packages)
+  prev_dir = Dir.getwd
+
   FileUtils.mkdir_p(repo_dir)
   FileUtils.mkdir_p(cache_dir)
 
@@ -151,6 +153,7 @@ def sync_local_repo(repo_dir, cache_dir, packages)
       end
     end
   end
+  Dir.chdir(prev_dir)
 end
 
 ################################################################################
