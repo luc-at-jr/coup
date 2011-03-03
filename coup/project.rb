@@ -324,24 +324,21 @@ EOF
 
       skip = false
 
-      if final_curdir_package
-        print "Skipping #{package_name}, because we are only installing dependencies\n" if @verbose
-        skip = true
-      elsif not flags.include?("--reinstall")
-        # check if the package is already installed
-        out = `ghc-pkg-#{@ghc_version} --package-conf=#{package_db_path} describe #{package_name} 2>/dev/null`
+      # check if the package is already installed
+      out = `ghc-pkg-#{@ghc_version} --package-conf=#{package_db_path} describe #{package_name} 2>/dev/null`
 
-        if $?.success?
-          # now, check if the installed package is registered with this project.
-          if @package_db_list.include?(package_db_path)
-            warn "WARNING: package #{package_name} is already installed for this project, "
-            warn "         but cabal wants to reinstall it, so we're going to!"
-          else
-            print "Registering existing package #{package_name} with this project\n" if @verbose
-            add_installed_package(package_db_path)
-            skip = true
-          end
+      if $?.success? and not final_curdir_package and not flags.include?("--reinstall")
+        # now, check if the installed package is registered with this project.
+        if @package_db_list.include?(package_db_path)
+          warn "WARNING: package #{package_name} is already installed for this project, "
+          warn "         but cabal wants to reinstall it, so we're going to!"
+        else
+          print "Registering existing package #{package_name} with this project\n" if @verbose
+          add_installed_package(package_db_path)
+          skip = true
         end
+      elsif deps_only && (package_list.include?(package_name) || final_curdir_package)
+        print "Skipping #{package_name}, because we are only installing dependencies\n" if @verbose
       end
 
       if not skip
