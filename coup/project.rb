@@ -28,7 +28,8 @@ class CoupProject
   end
 
   def get_package_path(package, digest)
-    File.join(@coup_user_dir, "packages", package + '-' + digest)
+    str = package + if @profiling then '-prof' else '-' end + digest
+    File.join(@coup_user_dir, "packages", str)
   end
 
   def get_package_db_path(package_path)
@@ -78,7 +79,7 @@ class CoupProject
 
     # these commands take the --package-db flag.
     if ["configure", "install"].include? cmd
-      args = args + cabal_db_flags(extra_db_path)
+      args = args + cabal_flags(extra_db_path)
     end
 
     # when any of these commands is run without any packages,
@@ -113,14 +114,23 @@ class CoupProject
     end
   end
 
-  def cabal_db_flags(extra_db_path = nil)
-    list = get_installed_packages + (if extra_db_path then [extra_db_path] else [] end)
-    return list.map {|x| "--package-db=#{x}"}
+  def cabal_flags(extra_db_path = nil)
+
+    if @profiling then
+      flags = [ "--enable-library-profiling",
+                "--enable-executable-profiling" ]
+    else
+      flags = []
+    end
+
+    package_list = get_installed_packages +
+                   if extra_db_path then [extra_db_path] else [] end
+    return flags + package_list.map {|x| "--package-db=#{x}"}
   end
 
   ########################################
   def initialize(coup_user_dir, options)
-    # @profiling = options[:profiling]
+    @profiling = options[:profiling]
     @verbose   = options[:verbose]
 
     project_file = options[:project] || find_project_file(Dir.getwd)
@@ -174,7 +184,8 @@ class CoupProject
 
     project_basedir  = File.join(@coup_user_dir, "projects", "#{project_name}-#{digest}")
 
-    @project_dir     = File.join(project_basedir, "ghc-#{@ghc_version}")
+    @project_dir     = File.join(project_basedir,
+                                 "ghc-#{@ghc_version}" + if @profiling then "-prof" else "" end)
     puts "Project directory is: #{@project_dir}" if @verbose
 
     @repo_dir       = File.join(project_basedir, 'packages')
@@ -241,11 +252,13 @@ EOF
   # note: you can pass the empty list to get the dependencies for a .cabal file in
   # the current directory.
   def get_install_plan(pkgs, flags)
+    get_installed_packages  # initializes @package_db_list
+
     puts "Getting install plan ..."
     # note: we always perform the dry run with no local databases.
     # use "--global" so that local user packages (in ~/.cabal, ~/.ghc) are not used.
 
-    args = flags + ["--global", "--dry-run-show-deps", "-v0" ] + cabal_db_flags + pkgs
+    args = flags + ["--global", "--dry-run-show-deps", "-v0" ] + cabal_flags + pkgs
     out = `cabal install #{args.join(' ')}`
     unless $?.success? then exit 1 end
 
@@ -299,8 +312,6 @@ EOF
 
     dry_run = flags.include?("--dry-run")
 
-    get_installed_packages  # initializes @package_db_list
-
     packages.each_index do |i|
 
       package_name    = packages[i]['package_name']
@@ -350,7 +361,7 @@ EOF
         # run the cabal command
 
         if dry_run
-          puts "Would install #{package_name}"
+          puts "Would install #{package_name}" + if @profiling then " (profiling)" else "" end
         else
           if final_curdir_package then
             pkgs = []

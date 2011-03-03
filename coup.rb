@@ -20,16 +20,17 @@ options = {}
 optparse = OptionParser.new do |opts|
   opts.banner = "Usage: coup.rb [options] [command]"
 
-  options[:project] = nil
-  options[:verbose] = false
+  options[:project]   = nil
+  options[:verbose]   = false
+  options[:profiling] = false
 
   opts.on( '-v', '--verbose', 'Output more information' ) do
     options[:verbose] = true
   end
 
-  # opts.on( '-c', '--command CMD', "Run command on remaining arguments" ) do |x|
-  #   options[:command] = x
-  # end
+  opts.on( '-P', '--profiling', 'Build libraries and executables with profiling' ) do
+    options[:profiling] = true
+  end
 
   opts.on( '-p', '--project NAME', 'Select the coup cabal project (name or path)' ) do |p|
     options[:project] = p
