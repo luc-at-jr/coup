@@ -28,7 +28,7 @@ class CoupProject
   end
 
   def get_package_path(package, digest)
-    str = package + if @profiling then '-prof' else '-' end + digest
+    str = package + if @profiling then '-prof-' else '-' end + digest
     File.join(@coup_user_dir, "packages", str)
   end
 
