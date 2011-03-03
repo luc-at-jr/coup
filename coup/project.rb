@@ -339,6 +339,7 @@ EOF
         end
       elsif deps_only && (package_list.include?(package_name) || final_curdir_package)
         print "Skipping #{package_name}, because we are only installing dependencies\n" if @verbose
+        skip = true
       end
 
       if not skip
