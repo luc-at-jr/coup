@@ -44,6 +44,10 @@ class CoupProject
     File.join(@project_dir, "dist", name)
   end
 
+  def make_env(package_list)
+    ENV['GHC_PACKAGE_PATH'] = (package_list.reverse + [get_ghc_global_package_path]).join(':')
+  end
+
   def add_installed_package(package_db)
     if not @package_db_list.include?(package_db)
       @package_db_list << package_db
@@ -125,6 +129,7 @@ class CoupProject
 
     package_list = get_installed_packages +
                    if extra_db_path then [extra_db_path] else [] end
+    make_env(package_list)
     return flags + package_list.map {|x| "--package-db=#{x}"}
   end
 
@@ -197,8 +202,7 @@ class CoupProject
 
     setup_cabal
 
-    project_db_list = get_installed_packages + [get_ghc_global_package_path]
-    ENV['GHC_PACKAGE_PATH'] = project_db_list.join(':')
+    make_env(get_installed_packages)
   end
 
   ########################################
