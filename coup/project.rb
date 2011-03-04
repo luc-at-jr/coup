@@ -71,7 +71,7 @@ class CoupProject
         true
       end
     end
-    return @package_db_list
+    return @package_db_list.dup
   end
 
   def run_cabal_command(cmd, pkgs, flags, extra_db_path = nil, capture_output = false)
