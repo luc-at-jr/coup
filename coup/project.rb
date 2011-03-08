@@ -66,6 +66,7 @@ class CoupProject
       @package_db_list = []
     end
 
+    @package_db_list.uniq!
     @package_db_list.delete_if do |x|
       if File.exist?(x)
         false
@@ -74,6 +75,9 @@ class CoupProject
         warn "         #{x}"
         true
       end
+    end
+    File.open(installed_packages_file, "w") do |f|
+      f.write(@package_db_list.join("\n") + "\n")
     end
     return @package_db_list.dup
   end
