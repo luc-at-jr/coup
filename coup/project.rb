@@ -143,7 +143,7 @@ class CoupProject
     @verbose   = options[:verbose]
 
     project_file = options[:project] || find_project_file(Dir.getwd)
-    puts "Loading project #{project_file} ..."
+    puts "Loading project #{project_file} ..." if @verbose
 
     require_command("cabal")
     out = `cabal --version`
