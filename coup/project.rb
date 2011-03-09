@@ -68,7 +68,9 @@ class CoupProject
 
     @package_db_list.uniq!
     @package_db_list.delete_if do |x|
-      if File.exist?(x)
+      if x.empty?
+        true
+      elsif File.exist?(x)
         false
       else
         warn "WARNING: package database does not exist, ignoring:"
