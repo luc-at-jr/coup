@@ -133,8 +133,11 @@ class CoupProject
       flags = []
     end
 
-    package_list = get_installed_packages +
-                   if extra_db_path then [extra_db_path] else [] end
+    package_list = get_installed_packages
+    if extra_db_path
+      package_list.delete(extra_db_path)
+      package_list << extra_db_path
+    end
     make_env(package_list)
     return flags + package_list.map {|x| "--package-db=#{x}"}
   end
