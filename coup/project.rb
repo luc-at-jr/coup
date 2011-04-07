@@ -58,7 +58,7 @@ class CoupProject
   end
 
   def get_installed_packages
-    if @package_db_list then return @package_db_list end
+    if @package_db_list then return @package_db_list.dup end
 
     if File.exist? installed_packages_file
       @package_db_list = File.read(installed_packages_file).split("\n")
