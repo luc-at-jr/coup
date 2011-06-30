@@ -29,7 +29,7 @@ class CoupProject
 
   def get_package_path(package, digest)
     str = package + if @profiling then '-prof-' else '-' end + digest
-    File.join(@coup_user_dir, "packages", str)
+    File.join(@coup_user_dir, "packages", "ghc-#{@ghc_version}", str)
   end
 
   def get_package_db_path(package_path)
