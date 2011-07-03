@@ -151,9 +151,9 @@ class CoupProject
     puts "Loading project #{project_file} ..." if @verbose
 
     require_command("cabal")
-    out = `cabal --version`
-    unless out =~ /0\.9\.5/
-      raise "cabal-install is wrong version.  need 0.9.5"
+    out = `cabal install --help`
+    unless out =~ /dry-run-show-deps/
+      raise "cabal-install does not support --dry-run-show-deps option"
     end
 
     @coup_user_dir = coup_user_dir
