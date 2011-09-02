@@ -69,11 +69,17 @@ when 'describe', 'unregister', 'list', 'check'
   cmd = args[0]
   args.shift
   system "ghc-pkg", cmd, *args
-else
+when 'list-updated'
+  project.list_updated(File.join(ENV['HOME'],'.cabal/packages'))
+when 'exec'
   if not args.empty?
+    args.shift
     # run any command from inside the project environment
     exec *args
   end
+else
+  puts 'Unrecognized command.'
+  puts optparse
 end
 
 ########################################

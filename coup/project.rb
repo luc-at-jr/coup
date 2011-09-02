@@ -115,6 +115,12 @@ class CoupProject
     end
   end
 
+  def old_cabal_command(cmd, pkgs=[], flags=[], extra_db_path=nil, capture_output=false)
+    ENV['CABAL_CONFIG'] = File.join(ENV['HOME'],'/.cabal/config')
+    run_cabal_command(cmd, pkgs, flags, extra_db_path, capture_output)
+    ENV['CABAL_CONFIG'] = cabal_config_path
+  end
+
   def find_cabal_file
     cabal_files = Dir.entries(".").find_all {|x| File.extname(x) == ".cabal" }
     case cabal_files.length
@@ -393,6 +399,53 @@ EOF
           add_installed_package(package_db_path)
         end
       end
+    end
+  end
+
+  def list_updated(packages_path)
+    puts 'Downloading most recent package list. This might take a while.'
+    old_cabal_command('update',[],[],nil,true)
+    puts 'Searching for updated package versions'
+    package_hash = {}
+    updated = {}
+
+    @all_packages.each do |package|
+      name, version = parse_package_name_version package
+      package_hash.store(name, version)
+    end
+
+    package_list = Dir.entries(packages_path).inject([]) do |lst, repo|
+      dir = File.join(packages_path, repo)
+      if repo[0] != '.' && File.directory?(dir)
+
+        lst = Dir.entries(dir).inject(lst) do |lst_, index|
+          if index =~ /\w+.tar\Z/
+            lst_ = lst_ + `tar -tf #{dir}/#{index}`.split
+          end
+          lst_
+        end
+      end
+      lst
+    end
+
+    package_list.each do |pkg_str|
+      name, version = pkg_str.split('/')
+      if package_hash[name]
+        if updated[name]
+          updated[name] = version if updated[name].to_f < version.to_f
+        else
+          updated[name] = version if package_hash[name].to_f < version.to_f
+        end
+      end
+    end
+
+    unless updated.empty?
+      puts "The following updates are available:"
+      updated.each_pair do |key,val|
+        puts "\t#{key}-#{package_hash[key]} -> #{key}-#{val}"
+      end
+    else
+      puts "All your packages are up to date!"
     end
   end
 
