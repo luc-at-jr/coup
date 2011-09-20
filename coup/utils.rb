@@ -65,6 +65,23 @@ def get_ghc_version()
 end
 
 ################################################################################
+def compare_versions(str1, str2)
+  as = str1.split('.')
+  bs = str2.split('.')
+
+  (0..[as.length,bs.length].max - 1).each {|i|
+    if as[i].nil?
+      return -1
+    elsif bs[i].nil? || as[i].to_i > bs[i].to_i
+      return 1
+    elsif as[i].to_i < bs[i].to_i
+      return -1
+    end
+  }
+  return 0
+end
+
+################################################################################
 def get_ghc_global_package_path()
   ghc_pkg = ENV['GHC_PKG'] || 'ghc-pkg'
   require_command(ghc_pkg)

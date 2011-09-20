@@ -432,17 +432,22 @@ EOF
       name, version = pkg_str.split('/')
       if package_hash[name]
         if updated[name]
-          updated[name] = version if updated[name].to_f < version.to_f
+          updated[name] = version if compare_versions(version, updated[name]) > 0
         else
-          updated[name] = version if package_hash[name].to_f < version.to_f
+          updated[name] = version if compare_versions(version, package_hash[name]) > 0
         end
       end
     end
 
     unless updated.empty?
       puts "The following updates are available:"
+      list = []
       updated.each_pair do |key,val|
-        puts "\t#{key}-#{package_hash[key]} -> #{key}-#{val}"
+        list << "\t#{key}-#{package_hash[key]} -> #{key}-#{val}"
+      end
+      list.sort! {|a,b| a.downcase <=> b.downcase}
+      list.each do |str|
+        puts str
       end
     else
       puts "All your packages are up to date!"
