@@ -44,7 +44,7 @@ class CoupProject
     File.join(@project_dir, "dist", name)
   end
 
-  def make_env(package_list)
+  def make_env(package_list = get_installed_packages)
     ENV['GHC_PACKAGE_PATH'] = (package_list.reverse + [get_ghc_global_package_path]).join(':')
   end
 
@@ -85,6 +85,7 @@ class CoupProject
   end
 
   def run_cabal_command(cmd, pkgs, flags, extra_db_path = nil, capture_output = false)
+
     args = pkgs + flags
 
     # these commands take the --package-db flag.
@@ -144,7 +145,9 @@ class CoupProject
       package_list.delete(extra_db_path)
       package_list << extra_db_path
     end
-    make_env(package_list)
+    unless @ghc76
+      make_env(package_list)
+    end
     return flags + package_list.map {|x| "--package-db=#{x}"}
   end
 
@@ -156,10 +159,17 @@ class CoupProject
     project_file = options[:project] || find_project_file(Dir.getwd)
     puts "Loading project #{project_file} ..." if @verbose
 
+    @ghc_version    = get_ghc_version()
+
+    @ghc76 = ["7", "6"] == @ghc_version.split('.')[0..1]
+
     require_command(cabal)
-    out = `#{cabal} install --help`
-    unless out =~ /dry-run-show-deps/
-      raise "cabal-install does not support --dry-run-show-deps option"
+
+    if !@ghc76
+      out = `#{cabal} install --help`
+      unless out =~ /dry-run-show-deps/
+        raise "cabal-install does not support --dry-run-show-deps option"
+      end
     end
 
     @coup_user_dir = coup_user_dir
@@ -200,7 +210,6 @@ class CoupProject
 
     project_name    = File.basename(project_file.chomp(File.extname(project_file)))
     digest          = Digest::MD5.hexdigest(@all_packages.join) # use all_packages.hash here?
-    @ghc_version    = get_ghc_version()
 
     project_basedir  = File.join(@coup_user_dir, "projects", "#{project_name}-#{digest}")
 
@@ -217,7 +226,9 @@ class CoupProject
 
     setup_cabal
 
-    make_env(get_installed_packages)
+    unless @ghc76
+      make_env(get_installed_packages)
+    end
   end
 
   ########################################
@@ -277,7 +288,12 @@ EOF
     # note: we always perform the dry run with no local databases.
     # use "--global" so that local user packages (in ~/.cabal, ~/.ghc) are not used.
 
-    args = flags + ["--global", "--dry-run-show-deps", "-v0" ] + cabal_flags + pkgs
+    if @ghc76
+      args = flags + ["--global", "--dry-run", "-v0" ] + cabal_flags + pkgs
+    else
+      args = flags + ["--global", "--dry-run-show-deps", "-v0" ] + cabal_flags + pkgs
+    end
+
     out = `#{cabal} install #{args.join(' ')}`
     unless $?.success? then exit 1 end
 
@@ -385,12 +401,15 @@ EOF
           else
             pkgs = [package_name]
           end
-          lines = run_cabal_command("install", pkgs, flags + ["-v1", "--dry-run"], package_db_path, true)
-          xs = lines.drop(2)
-          if xs.length != 1
+          if @ghc76
+            lines = run_cabal_command("install", pkgs, flags + ["-v0", "--dry-run"], package_db_path, true)
+          else
+            lines = run_cabal_command("install", pkgs, flags + ["-v1", "--dry-run"], package_db_path, true).drop(2)
+          end
+          if lines.length != 1
             warn "ERROR: cabal should only install one package, #{package_name}."
             warn "       However, cabal says it's going to install these packages:"
-            warn "       #{xs.join(', ')}"
+            warn "       #{lines.join(', ')}"
             warn "       You may have to remove these packages manually..."
             exit 1
           end

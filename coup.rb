@@ -65,6 +65,7 @@ when 'cabal', 'configure', 'build', 'clean'
   flags, pkgs = args.partition {|x| x[0].chr == '-'}
   project.run_cabal_command(cmd, pkgs, flags)
 when 'describe', 'unregister', 'list', 'check'
+  project.make_env
   # TODO for unregister, remove the file from the project list.
   cmd = args[0]
   args.shift
@@ -72,6 +73,7 @@ when 'describe', 'unregister', 'list', 'check'
 when 'list-updated'
   project.list_updated(File.join(ENV['HOME'],'.cabal/packages'))
 when 'exec'
+  project.make_env
   if not args.empty?
     args.shift
     # run any command from inside the project environment
