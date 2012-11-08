@@ -51,6 +51,11 @@ def read_package_list(path)
 end
 
 ################################################################################
+def cabal
+  ENV['CABAL'] || 'cabal'
+end
+
+################################################################################
 def get_ghc_version()
   ghc = ENV['GHC'] || 'ghc'
   require_command(ghc)

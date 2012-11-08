@@ -103,14 +103,14 @@ class CoupProject
     end
 
     if capture_output
-      out = `cabal #{cmd} #{args.join(' ')}`
+      out = `#{cabal} #{cmd} #{args.join(' ')}`
       unless $?.success? then
         puts out
         exit 1
       end
       return out.split("\n")
     else
-      system "cabal", cmd, *args
+      system cabal, cmd, *args
       unless $?.success? then exit 1 end
     end
   end
@@ -156,8 +156,8 @@ class CoupProject
     project_file = options[:project] || find_project_file(Dir.getwd)
     puts "Loading project #{project_file} ..." if @verbose
 
-    require_command("cabal")
-    out = `cabal install --help`
+    require_command(cabal)
+    out = `#{cabal} install --help`
     unless out =~ /dry-run-show-deps/
       raise "cabal-install does not support --dry-run-show-deps option"
     end
@@ -278,7 +278,7 @@ EOF
     # use "--global" so that local user packages (in ~/.cabal, ~/.ghc) are not used.
 
     args = flags + ["--global", "--dry-run-show-deps", "-v0" ] + cabal_flags + pkgs
-    out = `cabal install #{args.join(' ')}`
+    out = `#{cabal} install #{args.join(' ')}`
     unless $?.success? then exit 1 end
 
     packages = []
