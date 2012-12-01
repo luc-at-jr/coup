@@ -13,7 +13,7 @@ require File.join(dir, "coup", "utils.rb")
 require File.join(dir, "coup", "project.rb")
 
 ################################################################################
-coup_user_dir = File.join(ENV['HOME'], ".coup")
+coup_user_dir = ENV['COUP_USER_DIR'] || File.join(ENV['HOME'], ".coup")
 
 options = {}
 
