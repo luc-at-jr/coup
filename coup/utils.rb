@@ -70,6 +70,19 @@ def get_ghc_version()
 end
 
 ################################################################################
+def get_cabal_version()
+  require_command(cabal)
+  fin = IO.popen([cabal, "--numeric-version"].join(' '))
+  cabal_version = fin.read.chomp
+  fin.close
+  if cabal_version and cabal_version.split('.').length >= 3
+    return cabal_version
+  else
+    raise "Could not determine cabal version"
+  end
+end
+
+################################################################################
 def compare_versions(str1, str2)
   as = str1.split('.')
   bs = str2.split('.')

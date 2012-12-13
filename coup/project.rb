@@ -145,7 +145,7 @@ class CoupProject
       package_list.delete(extra_db_path)
       package_list << extra_db_path
     end
-    unless @ghc76
+    unless @newer_cabal
       make_env(package_list)
     end
     return flags + package_list.map {|x| "--package-db=#{x}"}
@@ -160,12 +160,14 @@ class CoupProject
     puts "Loading project #{project_file} ..." if @verbose
 
     @ghc_version    = get_ghc_version()
-
     @ghc76 = ["7", "6"] == @ghc_version.split('.')[0..1]
+
+    @cabal_version  = get_cabal_version()
+    @newer_cabal = ["1", "16"] == @cabal_version.split('.')[0..1]
 
     require_command(cabal)
 
-    if !@ghc76
+    if !@newer_cabal
       out = `#{cabal} install --help`
       unless out =~ /dry-run-show-deps/
         raise "cabal-install does not support --dry-run-show-deps option"
@@ -226,7 +228,7 @@ class CoupProject
 
     setup_cabal
 
-    unless @ghc76
+    unless @newer_cabal
       make_env(get_installed_packages)
     end
   end
@@ -288,7 +290,7 @@ EOF
     # note: we always perform the dry run with no local databases.
     # use "--global" so that local user packages (in ~/.cabal, ~/.ghc) are not used.
 
-    if @ghc76
+    if @newer_cabal
       args = flags + ["--global", "--dry-run", "-v0" ] + cabal_flags + pkgs
     else
       args = flags + ["--global", "--dry-run-show-deps", "-v0" ] + cabal_flags + pkgs
@@ -401,7 +403,7 @@ EOF
           else
             pkgs = [package_name]
           end
-          if @ghc76
+          if @newer_cabal
             lines = run_cabal_command("install", pkgs, flags + ["-v0", "--dry-run"], package_db_path, true)
           else
             lines = run_cabal_command("install", pkgs, flags + ["-v1", "--dry-run"], package_db_path, true).drop(2)
