@@ -237,7 +237,7 @@ class CoupProject
   def setup_cabal
 
     if not File.exists?(project_db_path)
-      system "ghc-pkg", "init", project_db_path
+      system "ghc-pkg-#{@ghc_version}", "init", project_db_path
       unless $?.success? then exit 1 end
     end
 
@@ -388,7 +388,7 @@ EOF
 
         # even if we're doing a dry-run, we have to make sure the db exists
         if not File.exist?(package_db_path)
-          system "ghc-pkg", "init", package_db_path
+          system "ghc-pkg-#{@ghc_version}", "init", package_db_path
           unless $?.success? then exit 1 end
         end
 
